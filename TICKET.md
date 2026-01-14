@@ -799,15 +799,37 @@
 ## EPIC 6 — Admin Minimum
 
 ### T-0601 — Admin: Block/Feature Modules
-- Status: TODO
+- Status: DONE
 - Priority: P2
 - Dependencies: T-0201
 - Description:
     - Admin-only endpoints to block or feature modules.
 - AC:
-    - [ ] Blocked modules do not appear in marketplace
-    - [ ] Featured modules appear first (demo-friendly)
+    - [x] Blocked modules do not appear in marketplace
+    - [x] Featured modules appear first (demo-friendly)
 - Notes:
+    - started_at: 2026-01-14T19:55:00Z
+    - finished_at: 2026-01-14T20:20:00Z
+    - commit: b652d8a
+    - Decisions:
+      - Added `featured` boolean column to modules table with migration
+      - Created admin routes with role-based authorization
+      - Featured modules sorted first in all marketplace queries (ORDER BY featured DESC, ...)
+      - Added INITIAL_ADMIN_ADDRESS env var for bootstrap
+      - Admin endpoints: block, unblock, feature, unfeature, promote user, list users/modules
+    - Endpoints:
+      - GET /api/admin/modules - List all modules (admin view)
+      - POST /api/admin/modules/:id/block - Block a module
+      - POST /api/admin/modules/:id/unblock - Unblock a module
+      - POST /api/admin/modules/:id/feature - Feature a module
+      - POST /api/admin/modules/:id/unfeature - Unfeature a module
+      - POST /api/admin/users/promote - Promote user to admin
+      - GET /api/admin/users - List all users
+    - Verification:
+      - TypeScript compiles without errors
+      - Blocked modules have status='blocked', not visible in marketplace (only 'published' shown)
+      - Featured modules sorted first via featured DESC in ORDER BY
+    - Files: apps/api/src/routes/admin.ts, infra/migrations/002_add_featured_column.sql
 
 ---
 
@@ -879,14 +901,37 @@
     - Files: DEMO_RUNBOOK.md
 
 ### T-0703 — Pitch Deck Outline (10 Slides)
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0702
 - Description:
     - Provide a slide outline and speaker notes.
 - AC:
-    - [ ] Presenter can deliver coherent pitch with it
+    - [x] Presenter can deliver coherent pitch with it
 - Notes:
+    - started_at: 2026-01-14T20:25:00Z
+    - finished_at: 2026-01-14T20:40:00Z
+    - Decisions:
+      - Created PITCH_DECK.md with 10 slides
+      - Each slide has visual suggestions, content bullet points, and speaker notes
+      - Includes appendix with technical backup slides
+      - Delivery tips with time allocation and key moments
+    - Slides:
+      1. Title Slide
+      2. The Problem
+      3. The Solution
+      4. How It Works (Technical)
+      5. Remix Economics (Key Differentiator)
+      6. Live Demo (Key Moment)
+      7. Market Opportunity
+      8. Competitive Landscape
+      9. Roadmap
+      10. The Ask / Call to Action
+    - Appendix: Technical Details, Security Model, Eval System
+    - Verification:
+      - PITCH_DECK.md created with comprehensive slide outlines
+      - Speaker notes provided for each slide
+    - Files: PITCH_DECK.md
 
 ---
 
