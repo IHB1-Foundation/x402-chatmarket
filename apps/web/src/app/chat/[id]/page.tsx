@@ -21,6 +21,13 @@ interface PaymentInfo {
   network?: string;
 }
 
+interface SessionPassInfo {
+  token: string;
+  creditsRemaining: number;
+  maxCredits: number;
+  expiresAt: number;
+}
+
 interface ModuleInfo {
   id: string;
   name: string;
@@ -56,6 +63,7 @@ export default function ChatPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [paymentRequirements, setPaymentRequirements] = useState<any>(null);
+  const [sessionPass, setSessionPass] = useState<SessionPassInfo | null>(null);
 
   // Fetch module info
   useEffect(() => {
@@ -128,6 +136,13 @@ export default function ChatPage() {
     return Buffer.from(JSON.stringify(payload)).toString('base64');
   };
 
+  // Check if session pass is valid (not expired, has credits)
+  const isSessionPassValid = () => {
+    if (!sessionPass) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return sessionPass.expiresAt > now && sessionPass.creditsRemaining > 0;
+  };
+
   const sendMessage = async (messageText: string, paymentHeader?: string) => {
     if (!messageText.trim()) return;
 
@@ -147,7 +162,10 @@ export default function ChatPage() {
         headers['X-WALLET-ADDRESS'] = address;
       }
 
-      if (paymentHeader) {
+      // Use session pass if available and valid
+      if (isSessionPassValid() && sessionPass) {
+        headers['X-SESSION-PASS'] = sessionPass.token;
+      } else if (paymentHeader) {
         headers['X-PAYMENT'] = paymentHeader;
       }
 
@@ -180,6 +198,21 @@ export default function ChatPage() {
       // Success
       if (data.chatId) setChatId(data.chatId);
       if (data.payment) setPaymentInfo(data.payment);
+
+      // Handle session pass in response
+      if (data.sessionPass) {
+        if (data.sessionPass.token) {
+          // New session pass from payment
+          setSessionPass(data.sessionPass);
+        } else if (data.sessionPass.creditsRemaining !== undefined) {
+          // Update existing session pass credits
+          setSessionPass((prev) =>
+            prev
+              ? { ...prev, creditsRemaining: data.sessionPass.creditsRemaining }
+              : null
+          );
+        }
+      }
 
       const assistantMessage: Message = { role: 'assistant', content: data.reply };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -290,6 +323,29 @@ export default function ChatPage() {
             TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-8)}
             {' | '}
             {formatPrice(paymentInfo.value || '0')}
+          </div>
+        </div>
+      )}
+
+      {/* Session Pass Info */}
+      {sessionPass && (
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.75rem',
+          backgroundColor: isSessionPassValid() ? '#e3f2fd' : '#fff3e0',
+          borderRadius: '8px',
+          fontSize: '0.875rem'
+        }}>
+          <strong>Session Pass</strong>
+          <div style={{ marginTop: '0.25rem', fontSize: '0.75rem' }}>
+            Credits: {sessionPass.creditsRemaining} / {sessionPass.maxCredits}
+            {' | '}
+            Expires: {new Date(sessionPass.expiresAt * 1000).toLocaleTimeString()}
+            {!isSessionPassValid() && (
+              <span style={{ color: '#ef6c00', marginLeft: '0.5rem' }}>
+                (Expired or exhausted - next message requires payment)
+              </span>
+            )}
           </div>
         </div>
       )}

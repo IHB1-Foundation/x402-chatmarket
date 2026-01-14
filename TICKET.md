@@ -543,16 +543,41 @@
     - Files: apps/web/src/app/chat/[id]/page.tsx
 
 ### T-0306 — Session Pass (Recommended): One Settle, Many Calls
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0304, T-0305
 - Description:
     - After a successful payment, issue an access token with credits/time.
     - Subsequent requests consume credits without x402 settle calls.
 - AC:
-    - [ ] Repeat messages do not trigger settle each time
-    - [ ] On expiry/credit depletion, 402 occurs again
+    - [x] Repeat messages do not trigger settle each time
+    - [x] On expiry/credit depletion, 402 occurs again
 - Notes:
+    - started_at: 2026-01-14T16:45:00Z
+    - finished_at: 2026-01-14T17:15:00Z
+    - Decisions:
+      - JWT-based session pass issued after payment for per_session modules
+      - Credits tracked in Redis with TTL matching session expiry
+      - X-SESSION-PASS header used to pass session token
+      - Session pass validates module match, expiry, and credit count
+      - Credits decremented atomically in Redis on each valid request
+      - UI stores session pass and displays credits remaining/expiry
+    - Implementation:
+      - apps/api/src/services/session-pass.ts: JWT issue/validate/consume logic
+      - apps/api/src/routes/chat.ts: Session pass check before x402 flow
+      - apps/web/src/app/chat/[id]/page.tsx: Session pass UI and header handling
+    - Flow:
+      1. User pays for per_session module
+      2. Server issues session pass JWT + stores credits in Redis
+      3. Subsequent requests use X-SESSION-PASS header
+      4. Server validates JWT, checks Redis for remaining credits
+      5. On valid pass: decrement credit, execute RAG, return response
+      6. On invalid/expired/exhausted: return 402 for new payment
+    - Verification:
+      - TypeScript compiles without errors
+      - Session pass issued on per_session payment
+      - Credits consumed on subsequent requests
+      - 402 returned when credits exhausted or pass expired
 
 ---
 
@@ -698,7 +723,7 @@
     - Files: README.md
 
 ### T-0702 — Demo Runbook (3-Minute Script + Wallet Setup)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0701
 - Description:
@@ -708,8 +733,27 @@
         - running paid flow
         - running remix flow
 - AC:
-    - [ ] Someone can follow the doc to reproduce the demo
+    - [x] Someone can follow the doc to reproduce the demo
 - Notes:
+    - started_at: 2026-01-14T16:25:00Z
+    - finished_at: 2026-01-14T16:40:00Z
+    - Decisions:
+      - Created DEMO_RUNBOOK.md with complete 3-minute script
+      - Includes pre-demo setup instructions
+      - Timed sections for each part of demo
+      - Troubleshooting guide included
+      - Demo variations for different audiences
+      - Key talking points for presenter
+    - Contents:
+      - Pre-demo setup (environment, wallet, pre-created module)
+      - 3-minute demo script with timing
+      - Troubleshooting section
+      - Demo variations (short, technical, seller-focused)
+    - Note: Remix flow demo deferred to P1 (T-0401-0405)
+    - Verification:
+      - DEMO_RUNBOOK.md created with step-by-step instructions
+      - Script is detailed enough for anyone to follow
+    - Files: DEMO_RUNBOOK.md
 
 ### T-0703 — Pitch Deck Outline (10 Slides)
 - Status: TODO
