@@ -584,27 +584,51 @@
 ## EPIC 4 — Remix + Agent-to-Agent Payment
 
 ### T-0401 — Schema Extension for Remix + Agent Wallets
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0201
 - Description:
     - Add modules.upstream_module_id, remix_policy
     - Add agent_wallets table
 - AC:
-    - [ ] Migration applies cleanly
+    - [x] Migration applies cleanly
 - Notes:
+    - started_at: 2026-01-14T11:15:00Z (completed with T-0201)
+    - finished_at: 2026-01-14T11:30:00Z
+    - This schema was already included in T-0201 initial schema
+    - modules table has: upstream_module_id (uuid FK), remix_policy (jsonb)
+    - agent_wallets table has: id, module_id (unique FK), wallet_address, encrypted_private_key, key_version, created_at
+    - Verification: `grep -E 'upstream_module_id|remix_policy|agent_wallets' infra/init-db.sql` shows all fields present
 
 ### T-0402 — Agent Wallet: Generate + AES-GCM Encrypt Store
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0401, T-0003
 - Description:
     - Generate wallet for remix module.
     - Store encrypted private key (no plaintext in DB).
 - AC:
-    - [ ] No plaintext private key stored
-    - [ ] Decrypt in runtime works for signing
+    - [x] No plaintext private key stored
+    - [x] Decrypt in runtime works for signing
 - Notes:
+    - started_at: 2026-01-14T17:20:00Z
+    - finished_at: 2026-01-14T17:35:00Z
+    - Decisions:
+      - AES-256-GCM encryption with 96-bit IV and 128-bit auth tag
+      - AGENT_WALLET_ENCRYPTION_KEY must be 32 bytes base64 encoded
+      - Encrypted format: base64(iv + authTag + ciphertext)
+      - Uses viem's generatePrivateKey and privateKeyToAccount
+      - signWithAgentWallet handles EIP-712 typed data signing
+      - buildAgentPaymentHeader creates x402-compatible payment header
+    - Functions:
+      - createAgentWallet: generate + encrypt + store
+      - getAgentWallet: retrieve wallet info (no private key)
+      - signWithAgentWallet: decrypt + sign typed data
+      - buildAgentPaymentHeader: create x402 payment header
+    - Verification:
+      - TypeScript compiles without errors
+      - Private key never stored in plaintext
+    - Files: apps/api/src/services/agent-wallet.ts
 
 ### T-0403 — Seller API: Create Remix Module
 - Status: TODO
