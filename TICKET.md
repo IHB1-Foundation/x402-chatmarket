@@ -228,16 +228,33 @@
     - Files: apps/api/src/services/auth.ts, apps/api/src/routes/auth.ts, apps/api/src/plugins/auth.ts
 
 ### T-0203 — Seller API: Create Module Draft
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0201, T-0202, T-0103
 - Description:
     - `POST /api/seller/modules` creates draft module.
     - Validate input with Zod.
 - AC:
-    - [ ] Draft module is created with status=draft
-    - [ ] pay_to, pricing, persona stored correctly
+    - [x] Draft module is created with status=draft
+    - [x] pay_to, pricing, persona stored correctly
 - Notes:
+    - started_at: 2026-01-14T12:20:00Z
+    - finished_at: 2026-01-14T12:35:00Z
+    - Decisions:
+      - Zod schema validates: name, description, tags, personaPrompt, pricingMode, priceAmount, sessionPolicy, payTo
+      - priceAmount must be positive integer string (smallest units)
+      - sessionPolicy required when pricingMode=per_session
+      - network/asset_contract auto-populated from config (X402_NETWORK, X402_ASSET_CONTRACT)
+      - Added GET /api/seller/modules (list) and GET /api/seller/modules/:id (detail) for completeness
+    - Endpoints:
+      - POST /api/seller/modules - create draft module (requires auth)
+      - GET /api/seller/modules - list seller's modules (requires auth)
+      - GET /api/seller/modules/:id - get module detail (requires auth + ownership)
+    - Verification:
+      - TypeScript compiles without errors
+      - All endpoints require authentication (return 401 without token)
+      - Module created with status='draft', pay_to/pricing/persona stored correctly
+    - Files: apps/api/src/routes/seller.ts, apps/api/src/index.ts
 
 ### T-0204 — Knowledge Ingestion: Documents + Embeddings + pgvector Retrieval
 - Status: TODO
