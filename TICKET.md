@@ -514,16 +514,33 @@
     - Files: apps/api/src/routes/chat.ts, apps/api/src/index.ts
 
 ### T-0305 — Web Chat UI: 402 Modal + Payment + Retry
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0303, T-0304, T-0102
 - Description:
-    - Chat screen that handles 402 → “Pay” → retry automatically.
+    - Chat screen that handles 402 → "Pay" → retry automatically.
     - Display payment event in UI.
 - AC:
-    - [ ] A buyer can complete a paid chat from the UI
-    - [ ] tx hash / amount displayed
+    - [x] A buyer can complete a paid chat from the UI
+    - [x] tx hash / amount displayed
 - Notes:
+    - started_at: 2026-01-14T15:35:00Z
+    - finished_at: 2026-01-14T15:55:00Z
+    - Decisions:
+      - Chat page at /chat/:moduleId with optional ?mode=try for free preview
+      - Payment modal shows on 402 response
+      - After payment, retries original message automatically
+      - Payment confirmation banner shows tx hash
+      - Chat history preserved across messages
+    - UI Features:
+      - Message bubbles (user right, assistant left)
+      - Payment required modal with wallet connect
+      - Payment confirmation banner with tx hash
+      - Loading states and error handling
+    - Verification:
+      - TypeScript compiles without errors
+      - Full 402 → pay → retry flow works
+    - Files: apps/web/src/app/chat/[id]/page.tsx
 
 ### T-0306 — Session Pass (Recommended): One Settle, Many Calls
 - Status: TODO
