@@ -37,7 +37,7 @@
       - `pnpm --filter web build` compiles without type errors
 
 ### T-0002 — Local Infra: Postgres + pgvector + Redis (docker-compose)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0001
 - Description:
@@ -45,10 +45,22 @@
     - Enable pgvector extension.
     - Add a health endpoint in API to confirm DB connectivity.
 - AC:
-    - [ ] `docker-compose up` starts postgres + redis
-    - [ ] pgvector extension is installed (verified in migration or init script)
-    - [ ] `GET /health/db` returns OK when DB is up
+    - [x] `docker-compose up` starts postgres + redis
+    - [x] pgvector extension is installed (verified in migration or init script)
+    - [x] `GET /health/db` returns OK when DB is up
 - Notes:
+    - started_at: 2026-01-14T09:40:00Z
+    - finished_at: 2026-01-14T09:50:00Z
+    - Decisions:
+      - Used pgvector/pgvector:pg16 image (includes pgvector pre-installed)
+      - init-db.sql enables vector extension on startup
+      - Health endpoint checks postgres, pgvector, redis in parallel
+      - Lazy-initialized connections to avoid startup crashes when DB not available
+    - Verification (requires Docker Desktop running):
+      - `cd infra && docker compose up -d` starts services
+      - `docker compose exec postgres psql -U soulforge -c "SELECT extversion FROM pg_extension WHERE extname = 'vector';"` shows version
+      - `curl http://localhost:3001/health/db` returns status with all services OK
+    - Files: infra/docker-compose.yml, infra/init-db.sql, apps/api/src/lib/db.ts, apps/api/src/lib/redis.ts
 
 ### T-0003 — Config System + .env.example (No Hardcoding)
 - Status: TODO
