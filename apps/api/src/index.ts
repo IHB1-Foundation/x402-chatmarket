@@ -4,7 +4,9 @@ import type { Module } from '@soulforge/shared';
 import { getConfig } from './config.js';
 import { checkDbConnection, checkPgvector } from './lib/db.js';
 import { checkRedisConnection } from './lib/redis.js';
+import { authPlugin } from './plugins/auth.js';
 import { premiumRoutes } from './routes/premium.js';
+import { authRoutes } from './routes/auth.js';
 
 // Validate config early - will exit if invalid
 const config = getConfig();
@@ -16,6 +18,9 @@ const fastify = Fastify({
 await fastify.register(cors, {
   origin: true,
 });
+
+// Register auth plugin (JWT)
+await fastify.register(authPlugin);
 
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
@@ -55,6 +60,7 @@ fastify.get('/api/test-shared', async () => {
 });
 
 // Register routes
+await fastify.register(authRoutes);
 await fastify.register(premiumRoutes);
 
 try {

@@ -200,16 +200,32 @@
     - Files: infra/init-db.sql, infra/migrations/001_initial_schema.sql
 
 ### T-0202 — Seller Auth (Recommended: SIWE) or Minimal Session
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0001, T-0003
 - Description:
     - Add seller authentication for seller endpoints.
     - Minimal acceptable: wallet-based session token.
 - AC:
-    - [ ] Seller endpoints return 401 without auth
-    - [ ] After login, seller can create a module
+    - [x] Seller endpoints return 401 without auth
+    - [x] After login, seller can create a module
 - Notes:
+    - started_at: 2026-01-14T11:35:00Z
+    - finished_at: 2026-01-14T11:50:00Z
+    - Decisions:
+      - Implemented SIWE (Sign-In with Ethereum) authentication
+      - Nonce stored in Redis with 5-minute TTL for one-time use
+      - JWT token issued on successful verification (24h expiry)
+      - fastify.authenticate decorator for protected routes
+      - Users created/updated on first login with 'seller' role
+    - Endpoints:
+      - POST /api/auth/nonce - get nonce for SIWE
+      - POST /api/auth/verify - verify signature and get JWT
+      - GET /api/auth/me - get current user (protected)
+    - Verification (requires Docker + Redis):
+      - Protected routes return 401 without Authorization header
+      - Valid JWT in `Authorization: Bearer <token>` returns user data
+    - Files: apps/api/src/services/auth.ts, apps/api/src/routes/auth.ts, apps/api/src/plugins/auth.ts
 
 ### T-0203 — Seller API: Create Module Draft
 - Status: TODO
