@@ -702,16 +702,37 @@
     - Files: apps/api/src/routes/chat.ts, apps/api/src/services/rag.ts, apps/web/src/app/chat/[id]/page.tsx
 
 ### T-0405 — Web: Remix Creation UI + Funding Guidance
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0403, T-0208
 - Description:
     - UI wizard to create remix modules.
     - Show agent wallet address + instructions to fund on testnet.
-- AC:
-    - [ ] Seller can create remix entirely from UI
-    - [ ] Funding guidance is clear enough to demo
 - Notes:
+    - started_at: 2026-01-14T18:40:00Z
+    - finished_at: 2026-01-14T19:00:00Z
+    - Decisions:
+      - Created /seller/remix wizard page with 5 steps
+      - Step 1: Select upstream from published modules + name/description
+      - Step 2: Define delta persona prompt
+      - Step 3: Set pricing (shows upstream cost as reference)
+      - Step 4: Review all settings
+      - Step 5: Success page with agent wallet address and funding guide
+      - Orange theme to distinguish from base module creation
+      - Added action buttons to seller dashboard for both create paths
+    - UI Features:
+      - Fetches published modules for upstream selection
+      - Shows upstream cost reminder when setting price
+      - Displays agent wallet address prominently after creation
+      - Step-by-step funding instructions for testnet
+      - Links to module detail and dashboard after creation
+    - Files:
+      - apps/web/src/app/seller/remix/page.tsx (new)
+      - apps/web/src/app/seller/page.tsx (updated)
+    - Verification:
+      - Web builds successfully
+      - /seller/remix page accessible
+      - UI wizard functional with all steps
 
 ---
 

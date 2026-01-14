@@ -172,6 +172,34 @@ export default function SellerDashboard() {
         </div>
       </div>
 
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem' }}>
+        <Link
+          href="/seller/create"
+          style={{
+            padding: '0.75rem 1.5rem',
+            backgroundColor: '#0070f3',
+            color: '#fff',
+            borderRadius: '4px',
+            textDecoration: 'none',
+          }}
+        >
+          + Create Module
+        </Link>
+        <Link
+          href="/seller/remix"
+          style={{
+            padding: '0.75rem 1.5rem',
+            backgroundColor: '#ff9800',
+            color: '#fff',
+            borderRadius: '4px',
+            textDecoration: 'none',
+          }}
+        >
+          + Create Remix
+        </Link>
+      </div>
+
       {/* Modules Section */}
       <section style={{ marginBottom: '2rem' }}>
         <h2>Your Modules</h2>
@@ -187,18 +215,9 @@ export default function SellerDashboard() {
             }}
           >
             <p style={{ color: '#666', marginBottom: '1rem' }}>You haven&apos;t created any modules yet.</p>
-            <Link
-              href="/seller/create"
-              style={{
-                padding: '0.75rem 1.5rem',
-                backgroundColor: '#0070f3',
-                color: '#fff',
-                borderRadius: '4px',
-                textDecoration: 'none',
-              }}
-            >
-              Create Your First Module
-            </Link>
+            <p style={{ color: '#888', fontSize: '0.875rem' }}>
+              Create a base module or remix an existing one to get started.
+            </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
