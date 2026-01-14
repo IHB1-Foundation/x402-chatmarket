@@ -11,6 +11,14 @@ import {
 } from '../services/knowledge.js';
 import { testRAG } from '../services/rag.js';
 import { createAgentWallet, getAgentWallet } from '../services/agent-wallet.js';
+import {
+  getEvalCases,
+  addEvalCases,
+  deleteEvalCases,
+  runEval,
+  getLatestEvalRun,
+  getEvalRuns,
+} from '../services/eval.js';
 
 const CreateModuleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -831,6 +839,159 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         createdAt: agentWallet.createdAt,
         fundingInstructions: `Fund this wallet with testnet tokens to enable remix payments. Address: ${agentWallet.walletAddress}`,
       });
+    }
+  );
+
+  // ==================== EVAL ENDPOINTS ====================
+
+  const AddEvalCasesSchema = z.object({
+    cases: z
+      .array(
+        z.object({
+          prompt: z.string().min(1).max(1000),
+          rubric: z.string().max(2000).optional(),
+          expectedKeywords: z.array(z.string().max(100)).max(20).optional(),
+        })
+      )
+      .min(1)
+      .max(50),
+  });
+
+  // Add eval cases to module
+  fastify.post<{ Params: { id: string }; Body: z.infer<typeof AddEvalCasesSchema> }>(
+    '/api/seller/modules/:id/eval/cases',
+    { preValidation: [fastify.authenticate] },
+    async (
+      request: FastifyRequest<{ Params: { id: string }; Body: z.infer<typeof AddEvalCasesSchema> }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      // Verify ownership
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const parseResult = AddEvalCasesSchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid request',
+          details: parseResult.error.issues,
+        });
+      }
+
+      try {
+        const added = await addEvalCases(id, parseResult.data.cases);
+        return reply.status(201).send({
+          message: `Successfully added ${added.length} eval cases`,
+          count: added.length,
+          cases: added,
+        });
+      } catch (err) {
+        fastify.log.error(err, 'Failed to add eval cases');
+        return reply.status(500).send({ error: 'Failed to add eval cases' });
+      }
+    }
+  );
+
+  // Get eval cases for module
+  fastify.get<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/eval/cases',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const cases = await getEvalCases(id);
+      return reply.send({ count: cases.length, cases });
+    }
+  );
+
+  // Delete all eval cases for module
+  fastify.delete<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/eval/cases',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const deleted = await deleteEvalCases(id);
+      return reply.send({ message: `Deleted ${deleted} eval cases`, count: deleted });
+    }
+  );
+
+  // Run eval for module
+  fastify.post<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/eval/run',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      try {
+        const result = await runEval(id);
+        return reply.send({
+          message: `Eval completed with score ${result.score}/10`,
+          ...result,
+        });
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('No eval cases')) {
+          return reply.status(400).send({ error: err.message });
+        }
+        fastify.log.error(err, 'Failed to run eval');
+        return reply.status(500).send({ error: 'Failed to run eval' });
+      }
+    }
+  );
+
+  // Get latest eval result for module
+  fastify.get<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/eval',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const latestRun = await getLatestEvalRun(id);
+      if (!latestRun) {
+        return reply.send({ hasRun: false, message: 'No eval runs yet' });
+      }
+
+      return reply.send({ hasRun: true, ...latestRun });
+    }
+  );
+
+  // Get eval run history for module
+  fastify.get<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/eval/history',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const runs = await getEvalRuns(id);
+      return reply.send({ count: runs.length, runs });
     }
   );
 }

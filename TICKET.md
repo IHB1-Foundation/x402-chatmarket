@@ -739,16 +739,34 @@
 ## EPIC 5 — Eval / Trust Signals
 
 ### T-0501 — Eval API + Score Storage (10 Cases)
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0201, T-0301
 - Description:
     - Store eval cases.
     - Run eval and store score + details.
 - AC:
-    - [ ] Eval produces score 0–10 and stores results
-    - [ ] Score appears on module detail
+    - [x] Eval produces score 0–10 and stores results
+    - [x] Score appears on module detail
 - Notes:
+    - started_at: 2026-01-14T19:05:00Z
+    - finished_at: 2026-01-14T19:25:00Z
+    - Decisions:
+      - Keyword-based evaluation (low-cost default)
+      - 70% keyword match threshold for "passed"
+      - Score normalized to 0-10 scale
+      - Stores full eval run history with details
+      - Updates module.eval_score and last_eval_at
+    - Endpoints:
+      - POST /api/seller/modules/:id/eval/cases - Add eval cases
+      - GET /api/seller/modules/:id/eval/cases - List eval cases
+      - DELETE /api/seller/modules/:id/eval/cases - Delete all cases
+      - POST /api/seller/modules/:id/eval/run - Run eval
+      - GET /api/seller/modules/:id/eval - Get latest eval result
+      - GET /api/seller/modules/:id/eval/history - Get eval history
+    - Files:
+      - apps/api/src/services/eval.ts (new)
+      - apps/api/src/routes/seller.ts (updated)
 
 ### T-0502 — Web: Eval Runner UI
 - Status: TODO
