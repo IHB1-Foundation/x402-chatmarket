@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { WagmiProvider } from '../providers/WagmiProvider';
 
 export const metadata: Metadata = {
   title: 'SoulForge',
@@ -12,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <WagmiProvider>{children}</WagmiProvider>
+      </body>
     </html>
   );
 }

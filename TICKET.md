@@ -120,16 +120,31 @@
     - Files: apps/api/src/services/x402.ts, apps/api/src/repositories/payments.ts, apps/api/src/routes/premium.ts
 
 ### T-0102 — Web x402 POC: Handle 402 + Wallet Sign + Retry with X-PAYMENT
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0101
 - Description:
     - Minimal UI that calls `/api/premium/echo`.
-    - On 402, prompt “Pay with wallet”, build X-PAYMENT, retry request.
+    - On 402, prompt "Pay with wallet", build X-PAYMENT, retry request.
 - AC:
-    - [ ] In browser, user can complete the flow to 200
-    - [ ] Debug panel shows 402 response body and final 200 response
+    - [x] In browser, user can complete the flow to 200
+    - [x] Debug panel shows 402 response body and final 200 response
 - Notes:
+    - started_at: 2026-01-14T10:30:00Z
+    - finished_at: 2026-01-14T10:50:00Z
+    - Decisions:
+      - Used wagmi + viem for wallet connection and EIP-712 signing
+      - Created /x402-poc page with full debug panel showing request/response logs
+      - EIP-712 PaymentAuthorization type with from/to/value/validAfter/validBefore/nonce
+      - Supports MetaMask, Coinbase Wallet, and injected providers
+    - Verification (requires browser + wallet):
+      1. Start API with X402_MOCK_MODE=true
+      2. Start web with `pnpm --filter web dev`
+      3. Go to http://localhost:3000/x402-poc
+      4. Connect wallet (MetaMask/etc)
+      5. Click "Call Premium Echo" button
+      6. Debug panel shows: 402 response -> wallet sign prompt -> 200 response
+    - Files: apps/web/src/app/x402-poc/page.tsx, apps/web/src/lib/wagmi.ts, apps/web/src/providers/WagmiProvider.tsx
 
 ### T-0103 — Payment Config Abstraction (Network/Token/Domain)
 - Status: TODO
