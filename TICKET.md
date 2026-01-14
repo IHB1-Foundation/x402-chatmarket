@@ -480,7 +480,7 @@
     - Files: apps/api/src/services/try-once.ts
 
 ### T-0304 — Paid Chat Endpoint: x402 Gate + Persist Payments
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0103, T-0302, T-0201
 - Description:
@@ -489,11 +489,29 @@
         - Otherwise uses x402 paywall logic
     - Persist chat messages and payments.
 - AC:
-    - [ ] No payment → 402
-    - [ ] Payment → verify + settle → response
-    - [ ] payments table has a settlement record with tx hash
-    - [ ] chat saved in DB
+    - [x] No payment → 402
+    - [x] Payment → verify + settle → response
+    - [x] payments table has a settlement record with tx hash
+    - [x] chat saved in DB
 - Notes:
+    - started_at: 2026-01-14T15:10:00Z
+    - finished_at: 2026-01-14T15:30:00Z
+    - Decisions:
+      - Single endpoint handles both free try and paid modes
+      - Free try: checks eligibility, truncates response, records usage
+      - Paid: verify → settle → RAG → response
+      - All payment attempts (success/fail) recorded in payments table
+      - Chat history preserved across messages in same chat
+      - X-WALLET-ADDRESS header for wallet identification
+    - Flow:
+      1. If mode=try or no X-PAYMENT: check try-once eligibility
+      2. If eligible: execute RAG with limits, record usage
+      3. If not eligible and no payment: return 402
+      4. If X-PAYMENT: verify → settle → execute RAG → response
+    - Verification:
+      - TypeScript compiles without errors
+      - Integrates x402, RAG, try-once, and persistence
+    - Files: apps/api/src/routes/chat.ts, apps/api/src/index.ts
 
 ### T-0305 — Web Chat UI: 402 Modal + Payment + Retry
 - Status: TODO

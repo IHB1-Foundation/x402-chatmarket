@@ -10,6 +10,7 @@ import { authRoutes } from './routes/auth.js';
 import { testLLMRoutes } from './routes/test-llm.js';
 import { sellerRoutes } from './routes/seller.js';
 import { modulesRoutes } from './routes/modules.js';
+import { chatRoutes } from './routes/chat.js';
 
 // Validate config early - will exit if invalid
 const config = getConfig();
@@ -68,6 +69,7 @@ await fastify.register(premiumRoutes);
 await fastify.register(testLLMRoutes);
 await fastify.register(sellerRoutes);
 await fastify.register(modulesRoutes);
+await fastify.register(chatRoutes);
 
 try {
   await fastify.listen({ port: config.API_PORT, host: config.API_HOST });
