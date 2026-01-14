@@ -82,11 +82,13 @@ CREATE TABLE IF NOT EXISTS modules (
     remix_policy JSONB,
     eval_score INTEGER,
     last_eval_at TIMESTAMPTZ,
+    featured BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_modules_owner ON modules(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_modules_featured ON modules(featured) WHERE featured = TRUE;
 CREATE INDEX IF NOT EXISTS idx_modules_status ON modules(status);
 CREATE INDEX IF NOT EXISTS idx_modules_type ON modules(type);
 CREATE INDEX IF NOT EXISTS idx_modules_upstream ON modules(upstream_module_id);

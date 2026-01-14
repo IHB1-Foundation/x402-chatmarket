@@ -33,6 +33,9 @@ const ApiConfigSchema = z.object({
   // Security
   JWT_SECRET: z.string().min(32).optional(),
   AGENT_WALLET_ENCRYPTION_KEY: z.string().min(32).optional(),
+
+  // Admin Bootstrap (optional - set this to auto-promote a wallet to admin on first login)
+  INITIAL_ADMIN_ADDRESS: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
 });
 
 const WebConfigSchema = z.object({

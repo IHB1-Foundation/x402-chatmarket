@@ -48,24 +48,24 @@ export async function modulesRoutes(fastify: FastifyInstance): Promise<void> {
         paramIndex++;
       }
 
-      // Sort order
+      // Sort order - featured modules always appear first
       let orderBy: string;
       switch (sort) {
         case 'oldest':
-          orderBy = 'created_at ASC';
+          orderBy = 'featured DESC, created_at ASC';
           break;
         case 'price_asc':
-          orderBy = 'CAST(price_amount AS BIGINT) ASC';
+          orderBy = 'featured DESC, CAST(price_amount AS BIGINT) ASC';
           break;
         case 'price_desc':
-          orderBy = 'CAST(price_amount AS BIGINT) DESC';
+          orderBy = 'featured DESC, CAST(price_amount AS BIGINT) DESC';
           break;
         case 'eval_score':
-          orderBy = 'COALESCE(eval_score, 0) DESC, created_at DESC';
+          orderBy = 'featured DESC, COALESCE(eval_score, 0) DESC, created_at DESC';
           break;
         case 'newest':
         default:
-          orderBy = 'created_at DESC';
+          orderBy = 'featured DESC, created_at DESC';
           break;
       }
 
@@ -76,7 +76,7 @@ export async function modulesRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Get modules
       const query = `
-        SELECT id, type, name, description, tags, status,
+        SELECT id, type, name, description, tags, status, featured,
                pricing_mode, price_amount, pay_to, network, asset_contract,
                eval_score, created_at
         FROM modules
@@ -94,6 +94,7 @@ export async function modulesRoutes(fastify: FastifyInstance): Promise<void> {
         name: row.name,
         description: row.description,
         tags: row.tags,
+        featured: row.featured,
         pricingMode: row.pricing_mode,
         priceAmount: row.price_amount,
         network: row.network,
@@ -122,7 +123,7 @@ export async function modulesRoutes(fastify: FastifyInstance): Promise<void> {
       const pool = getPool();
 
       const result = await pool.query(
-        `SELECT m.id, m.type, m.name, m.description, m.tags, m.status,
+        `SELECT m.id, m.type, m.name, m.description, m.tags, m.status, m.featured,
                 m.pricing_mode, m.price_amount, m.session_policy,
                 m.pay_to, m.network, m.asset_contract,
                 m.upstream_module_id, m.eval_score, m.last_eval_at, m.created_at,
@@ -167,6 +168,7 @@ export async function modulesRoutes(fastify: FastifyInstance): Promise<void> {
         name: module.name,
         description: module.description,
         tags: module.tags,
+        featured: module.featured,
         pricingMode: module.pricing_mode,
         priceAmount: module.price_amount,
         sessionPolicy: module.session_policy,

@@ -56,15 +56,22 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       const address = result.address!;
+      const config = getConfig();
+
+      // Determine role - check if this is the initial admin address
+      const isInitialAdmin =
+        config.INITIAL_ADMIN_ADDRESS &&
+        config.INITIAL_ADMIN_ADDRESS.toLowerCase() === address;
+      const role = isInitialAdmin ? 'admin' : 'seller';
 
       // Get or create user in database
       const pool = getPool();
       const userResult = await pool.query(
         `INSERT INTO users (wallet_address, role)
-         VALUES ($1, 'seller')
+         VALUES ($1, $2)
          ON CONFLICT (wallet_address) DO UPDATE SET updated_at = NOW()
          RETURNING id, wallet_address, role`,
-        [address]
+        [address, role]
       );
 
       const user = userResult.rows[0];
