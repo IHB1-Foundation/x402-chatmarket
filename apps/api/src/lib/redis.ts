@@ -1,14 +1,12 @@
 import Redis from 'ioredis';
+import { getConfig } from '../config.js';
 
 let redis: Redis.Redis | null = null;
 
 export function getRedis(): Redis.Redis {
   if (!redis) {
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error('REDIS_URL environment variable is not set');
-    }
-    redis = new Redis.default(redisUrl);
+    const config = getConfig();
+    redis = new Redis.default(config.REDIS_URL);
   }
   return redis;
 }

@@ -63,16 +63,28 @@
     - Files: infra/docker-compose.yml, infra/init-db.sql, apps/api/src/lib/db.ts, apps/api/src/lib/redis.ts
 
 ### T-0003 — Config System + .env.example (No Hardcoding)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0001
 - Description:
     - Add `.env.example` for web and api with all required variables.
     - Fail fast with clear error messages when required env vars are missing.
 - AC:
-    - [ ] `.env.example` includes DB/Redis/LLM/x402/security vars
-    - [ ] App crashes early with a clear “missing env var” message
+    - [x] `.env.example` includes DB/Redis/LLM/x402/security vars
+    - [x] App crashes early with a clear "missing env var" message
 - Notes:
+    - started_at: 2026-01-14T09:55:00Z
+    - finished_at: 2026-01-14T10:05:00Z
+    - Decisions:
+      - Zod-based config validation in @soulforge/shared
+      - ConfigValidationError thrown with detailed issues list
+      - API config.ts wraps validation and exits process with clear message
+      - Separate .env.example for web (public vars only) and api (all vars)
+    - Verification:
+      - `DATABASE_URL= REDIS_URL= npx tsx src/index.ts` outputs clear error and exits:
+        "FATAL: Invalid API configuration" with list of missing vars
+      - .env.example files contain all required variables from PROJECT.md section 13
+    - Files: packages/shared/src/config/index.ts, apps/api/.env.example, apps/web/.env.example, apps/api/src/config.ts
 
 ---
 
