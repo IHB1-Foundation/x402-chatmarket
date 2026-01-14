@@ -344,15 +344,30 @@
     - Files: apps/api/src/routes/modules.ts, apps/api/src/index.ts
 
 ### T-0207 — Web: Marketplace UI (List/Search/Detail)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0206
 - Description:
     - Build marketplace pages and module detail page.
 - AC:
-    - [ ] Buyer can browse published modules
-    - [ ] Detail page has “Try Once” and “Paid Chat” actions
+    - [x] Buyer can browse published modules
+    - [x] Detail page has "Try Once" and "Paid Chat" actions
 - Notes:
+    - started_at: 2026-01-14T13:40:00Z
+    - finished_at: 2026-01-14T14:00:00Z
+    - Decisions:
+      - Used inline styles for simplicity (following existing pattern)
+      - Marketplace page: grid layout, search, tag filter, sort options
+      - Module detail page: pricing card, example prompts, module info
+      - "Try Once" and "Paid Chat" buttons link to /chat/:id (to be implemented)
+    - Pages:
+      - /marketplace - browse/search modules
+      - /marketplace/:id - module detail
+      - / - updated home page with marketplace link
+    - Verification:
+      - TypeScript compiles without errors
+      - UI displays modules from API
+    - Files: apps/web/src/app/marketplace/page.tsx, apps/web/src/app/marketplace/[id]/page.tsx, apps/web/src/app/page.tsx
 
 ### T-0208 — Web: Seller Dashboard + Create Module Wizard
 - Status: TODO
