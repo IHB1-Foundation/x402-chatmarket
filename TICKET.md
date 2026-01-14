@@ -289,15 +289,30 @@
     - Files: apps/api/src/services/knowledge.ts, apps/api/src/routes/seller.ts
 
 ### T-0205 — Seller API: Publish Module
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0203, T-0204
 - Description:
     - `POST /api/seller/modules/:id/publish` sets status=published.
 - AC:
-    - [ ] Only owner can publish
-    - [ ] Published modules become visible in marketplace list
+    - [x] Only owner can publish
+    - [x] Published modules become visible in marketplace list
 - Notes:
+    - started_at: 2026-01-14T13:05:00Z
+    - finished_at: 2026-01-14T13:15:00Z
+    - Decisions:
+      - Added publish endpoint that changes status draft→published
+      - Added unpublish endpoint for convenience (published→draft)
+      - Blocked modules cannot be published/unpublished
+      - Ownership verified before status change
+    - Endpoints:
+      - POST /api/seller/modules/:id/publish - publish module
+      - POST /api/seller/modules/:id/unpublish - unpublish module
+    - Verification:
+      - TypeScript compiles without errors
+      - Only owner can publish (403 for non-owners)
+      - Status changes correctly
+    - Files: apps/api/src/routes/seller.ts
 
 ### T-0206 — Buyer API: Marketplace List/Search/Detail
 - Status: TODO

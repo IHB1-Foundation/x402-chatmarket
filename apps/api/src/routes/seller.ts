@@ -221,6 +221,106 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
     }
   );
 
+  // Publish module
+  fastify.post<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/publish',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+      const pool = getPool();
+
+      // Get module and verify ownership
+      const moduleResult = await pool.query(
+        'SELECT id, owner_user_id, status, name FROM modules WHERE id = $1',
+        [id]
+      );
+
+      if (moduleResult.rows.length === 0) {
+        return reply.status(404).send({ error: 'Module not found' });
+      }
+
+      const module = moduleResult.rows[0];
+
+      if (module.owner_user_id !== user.sub) {
+        return reply.status(403).send({ error: 'Access denied' });
+      }
+
+      if (module.status === 'published') {
+        return reply.status(400).send({ error: 'Module is already published' });
+      }
+
+      if (module.status === 'blocked') {
+        return reply.status(400).send({ error: 'Cannot publish a blocked module' });
+      }
+
+      // Update status to published
+      const result = await pool.query(
+        `UPDATE modules SET status = 'published', updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, status, updated_at`,
+        [id]
+      );
+
+      return reply.send({
+        id: result.rows[0].id,
+        status: result.rows[0].status,
+        message: `Module "${module.name}" has been published`,
+        updatedAt: result.rows[0].updated_at,
+      });
+    }
+  );
+
+  // Unpublish module (return to draft)
+  fastify.post<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/unpublish',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+      const pool = getPool();
+
+      // Get module and verify ownership
+      const moduleResult = await pool.query(
+        'SELECT id, owner_user_id, status, name FROM modules WHERE id = $1',
+        [id]
+      );
+
+      if (moduleResult.rows.length === 0) {
+        return reply.status(404).send({ error: 'Module not found' });
+      }
+
+      const module = moduleResult.rows[0];
+
+      if (module.owner_user_id !== user.sub) {
+        return reply.status(403).send({ error: 'Access denied' });
+      }
+
+      if (module.status === 'draft') {
+        return reply.status(400).send({ error: 'Module is already a draft' });
+      }
+
+      if (module.status === 'blocked') {
+        return reply.status(400).send({ error: 'Cannot unpublish a blocked module' });
+      }
+
+      // Update status to draft
+      const result = await pool.query(
+        `UPDATE modules SET status = 'draft', updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, status, updated_at`,
+        [id]
+      );
+
+      return reply.send({
+        id: result.rows[0].id,
+        status: result.rows[0].status,
+        message: `Module "${module.name}" has been unpublished`,
+        updatedAt: result.rows[0].updated_at,
+      });
+    }
+  );
+
   // Knowledge ingestion schemas
   const AddQASchema = z.object({
     items: z
