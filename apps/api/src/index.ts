@@ -5,6 +5,7 @@ import { getConfig } from './config.js';
 import { checkDbConnection, checkPgvector } from './lib/db.js';
 import { checkRedisConnection } from './lib/redis.js';
 import { authPlugin } from './plugins/auth.js';
+import { observabilityPlugin } from './plugins/observability.js';
 import { premiumRoutes } from './routes/premium.js';
 import { authRoutes } from './routes/auth.js';
 import { testLLMRoutes } from './routes/test-llm.js';
@@ -23,6 +24,9 @@ const fastify = Fastify({
 await fastify.register(cors, {
   origin: true,
 });
+
+// Register observability plugin (request IDs, structured logging)
+await fastify.register(observabilityPlugin);
 
 // Register auth plugin (JWT)
 await fastify.register(authPlugin);

@@ -971,13 +971,32 @@
     - Files: apps/web/playwright.config.ts, apps/web/e2e/*.spec.ts, apps/web/package.json
 
 ### T-0802 — Observability: Structured Logs + (Optional) Sentry
-- Status: TODO
+- Status: DONE
 - Priority: P2
 - Dependencies: T-0101
 - Description:
     - Add requestId, txHash, latency logs.
     - Optional Sentry integration.
 - AC:
-    - [ ] Payment failures are diagnosable from logs
+    - [x] Payment failures are diagnosable from logs
 - Notes:
-  text
+    - started_at: 2026-01-14T21:15:00Z
+    - finished_at: 2026-01-14T21:35:00Z
+    - Decisions:
+      - Created observability plugin with request ID generation
+      - Added structured logging for all requests (start/end/error)
+      - Added dedicated payment event logging utilities
+      - Logs include: requestId, moduleId, payer, payTo, value, txHash, network, latencyMs
+    - Log Types:
+      - request_start: All incoming requests with method/url/ip
+      - request_end: Response with statusCode and latencyMs
+      - request_error: Error details with stack trace
+      - payment_attempt: Payment flow started
+      - payment_verify: Verify result with latency
+      - payment_success/payment_failure: Settlement result with txHash
+    - Note: Sentry integration deferred (requires Sentry account setup)
+    - Verification:
+      - TypeScript compiles without errors
+      - Payment flow logs all events with structured data
+      - requestId tracks requests across log entries
+    - Files: apps/api/src/plugins/observability.ts, apps/api/src/routes/chat.ts, apps/api/src/index.ts

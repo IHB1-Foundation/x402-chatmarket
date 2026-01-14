@@ -21,6 +21,11 @@ import {
   buildAgentPaymentHeader,
   getAgentWallet,
 } from '../services/agent-wallet.js';
+import {
+  logPaymentAttempt,
+  logPaymentVerify,
+  logPaymentSettle,
+} from '../plugins/observability.js';
 
 const ChatRequestSchema = z.object({
   chatId: z.string().uuid().optional().nullable(),
@@ -265,8 +270,27 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
       // Process payment
       const paymentHeader = request.headers['x-payment'] as string;
 
+      // Log payment attempt
+      logPaymentAttempt(request, {
+        moduleId: id,
+        payer: walletAddress,
+        value: module.priceAmount,
+      });
+
       // Verify payment
+      const verifyStartTime = Date.now();
       const verifyResult = await verifyPayment(paymentHeader);
+      const verifyLatency = Date.now() - verifyStartTime;
+
+      // Log verification result
+      logPaymentVerify(request, {
+        moduleId: id,
+        payer: verifyResult.payer,
+        valid: verifyResult.valid,
+        error: verifyResult.error,
+        latencyMs: verifyLatency,
+      });
+
       if (!verifyResult.valid) {
         // Record failed payment attempt
         await recordPayment(pool, {
@@ -286,8 +310,23 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       // Settle payment
+      const settleStartTime = Date.now();
       const settleResult = await settlePayment(paymentHeader);
+      const settleLatency = Date.now() - settleStartTime;
+
       if (!settleResult.success) {
+        // Log settlement failure
+        logPaymentSettle(request, {
+          moduleId: id,
+          payer: verifyResult.payer,
+          payTo: module.payTo,
+          value: verifyResult.value || module.priceAmount,
+          network: module.network,
+          success: false,
+          error: settleResult.error,
+          latencyMs: settleLatency,
+        });
+
         // Record failed settlement
         await recordPayment(pool, {
           moduleId: id,
@@ -304,6 +343,18 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
           details: settleResult.error,
         });
       }
+
+      // Log settlement success
+      logPaymentSettle(request, {
+        moduleId: id,
+        payer: verifyResult.payer,
+        payTo: module.payTo,
+        value: verifyResult.value || module.priceAmount,
+        txHash: settleResult.txHash,
+        network: module.network,
+        success: true,
+        latencyMs: settleLatency,
+      });
 
       // Record successful payment
       await recordPayment(pool, {
