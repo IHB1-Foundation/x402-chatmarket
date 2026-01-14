@@ -15,17 +15,26 @@
 ## EPIC 0 — Repo, Infra, Config
 
 ### T-0001 — Initialize Monorepo Structure
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: none
 - Description:
     - Create monorepo with `apps/web`, `apps/api`, `packages/shared`, `infra`.
     - Choose workspace tooling (pnpm recommended).
 - AC:
-    - [ ] `pnpm i` works from repo root
-    - [ ] `pnpm dev` runs web + api concurrently (even if minimal scaffolds)
-    - [ ] shared package import works from both apps
+    - [x] `pnpm i` works from repo root
+    - [x] `pnpm dev` runs web + api concurrently (even if minimal scaffolds)
+    - [x] shared package import works from both apps
 - Notes:
+    - started_at: 2026-01-14T09:33:00Z
+    - finished_at: 2026-01-14T09:38:00Z
+    - commit: 5a3f60c
+    - Decisions: Used pnpm 9.x workspaces, Next.js 14 (App Router), Fastify 4, tsx for dev
+    - Verification:
+      - `pnpm i` completes successfully
+      - `pnpm dev` runs concurrently with logs from both web (port 3000) and api (port 3001)
+      - `curl http://localhost:3001/api/test-shared` returns Module type from shared
+      - `pnpm --filter web build` compiles without type errors
 
 ### T-0002 — Local Infra: Postgres + pgvector + Redis (docker-compose)
 - Status: TODO
