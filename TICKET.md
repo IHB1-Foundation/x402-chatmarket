@@ -769,15 +769,30 @@
       - apps/api/src/routes/seller.ts (updated)
 
 ### T-0502 — Web: Eval Runner UI
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0501
 - Description:
     - Run eval from seller dashboard or module detail.
     - Show score + two failed examples.
 - AC:
-    - [ ] UI shows eval score and failure examples
+    - [x] UI shows eval score and failure examples
 - Notes:
+    - started_at: 2026-01-14T19:30:00Z
+    - finished_at: 2026-01-14T19:50:00Z
+    - Decisions:
+      - Added eval section to module detail page
+      - Shows latest score with color coding (green >= 7, orange >= 4, red < 4)
+      - Displays up to 2 failed cases with prompt, response snippet, and missing keywords
+      - Add Case form inline with prompt and expected keywords input
+      - Run Eval button triggers eval and updates score
+    - UI Features:
+      - Score display with pass/total count
+      - Timestamp of last run
+      - Failed cases detail view
+      - Eval case list with keywords
+      - Add case form with prompt and keywords
+    - Files: apps/web/src/app/seller/modules/[id]/page.tsx
 
 ---
 

@@ -34,6 +34,32 @@ interface Document {
   createdAt: string;
 }
 
+interface EvalCase {
+  id: string;
+  prompt: string;
+  rubric: string | null;
+  expectedKeywords: string[];
+}
+
+interface EvalCaseResult {
+  caseId: string;
+  prompt: string;
+  response: string;
+  score: number;
+  passed: boolean;
+  matchedKeywords: string[];
+  missingKeywords: string[];
+}
+
+interface EvalRun {
+  id: string;
+  score: number;
+  totalCases: number;
+  passedCases: number;
+  details: EvalCaseResult[];
+  createdAt: string;
+}
+
 export default function ModuleDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -45,15 +71,25 @@ export default function ModuleDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Eval state
+  const [evalCases, setEvalCases] = useState<EvalCase[]>([]);
+  const [latestEvalRun, setLatestEvalRun] = useState<EvalRun | null>(null);
+  const [evalRunning, setEvalRunning] = useState(false);
+  const [showAddEvalCase, setShowAddEvalCase] = useState(false);
+  const [newCasePrompt, setNewCasePrompt] = useState('');
+  const [newCaseKeywords, setNewCaseKeywords] = useState('');
+
   useEffect(() => {
     if (!isAuthenticated || !id) return;
 
     const fetchModule = async () => {
       setLoading(true);
       try {
-        const [moduleRes, docsRes] = await Promise.all([
+        const [moduleRes, docsRes, evalCasesRes, evalRunRes] = await Promise.all([
           fetch(`${API_URL}/api/seller/modules/${id}`, { headers: getAuthHeaders() }),
           fetch(`${API_URL}/api/seller/modules/${id}/documents`, { headers: getAuthHeaders() }),
+          fetch(`${API_URL}/api/seller/modules/${id}/eval/cases`, { headers: getAuthHeaders() }),
+          fetch(`${API_URL}/api/seller/modules/${id}/eval`, { headers: getAuthHeaders() }),
         ]);
 
         if (!moduleRes.ok) {
@@ -64,6 +100,16 @@ export default function ModuleDetailPage() {
         if (docsRes.ok) {
           const docsData = await docsRes.json();
           setDocuments(docsData.documents);
+        }
+        if (evalCasesRes.ok) {
+          const evalData = await evalCasesRes.json();
+          setEvalCases(evalData.cases || []);
+        }
+        if (evalRunRes.ok) {
+          const evalRunData = await evalRunRes.json();
+          if (evalRunData.hasRun) {
+            setLatestEvalRun(evalRunData);
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -126,6 +172,71 @@ export default function ModuleDetailPage() {
   const formatPrice = (amount: string, mode: string) => {
     const value = parseInt(amount, 10) / 1e6;
     return `$${value.toFixed(2)} / ${mode === 'per_message' ? 'message' : 'session'}`;
+  };
+
+  const handleAddEvalCase = async () => {
+    if (!newCasePrompt.trim()) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/seller/modules/${id}/eval/cases`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          cases: [
+            {
+              prompt: newCasePrompt,
+              expectedKeywords: newCaseKeywords
+                .split(',')
+                .map((k) => k.trim())
+                .filter(Boolean),
+            },
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setEvalCases([...evalCases, ...data.cases]);
+        setNewCasePrompt('');
+        setNewCaseKeywords('');
+        setShowAddEvalCase(false);
+      }
+    } catch (err) {
+      alert('Failed to add eval case');
+    }
+  };
+
+  const handleRunEval = async () => {
+    if (evalCases.length === 0) {
+      alert('Please add eval cases first');
+      return;
+    }
+
+    setEvalRunning(true);
+    try {
+      const res = await fetch(`${API_URL}/api/seller/modules/${id}/eval/run`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setLatestEvalRun(data);
+        if (module) {
+          setModule({ ...module, evalScore: data.score });
+        }
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to run eval');
+      }
+    } catch (err) {
+      alert('Failed to run eval');
+    } finally {
+      setEvalRunning(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -337,6 +448,189 @@ export default function ModuleDetailPage() {
             {documents.length > 10 && (
               <p style={{ color: '#666', fontSize: '0.875rem' }}>...and {documents.length - 10} more</p>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Eval Section */}
+      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0 }}>Evaluation</h2>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setShowAddEvalCase(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#e0e0e0',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              + Add Case
+            </button>
+            <button
+              onClick={handleRunEval}
+              disabled={evalRunning || evalCases.length === 0}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: evalCases.length > 0 ? '#2e7d32' : '#ccc',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: evalCases.length > 0 ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {evalRunning ? 'Running...' : 'Run Eval'}
+            </button>
+          </div>
+        </div>
+
+        {/* Latest Score */}
+        {latestEvalRun && (
+          <div
+            style={{
+              padding: '1rem',
+              backgroundColor: latestEvalRun.score >= 7 ? '#e8f5e9' : latestEvalRun.score >= 4 ? '#fff3e0' : '#ffebee',
+              borderRadius: '8px',
+              marginBottom: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong style={{ fontSize: '1.5rem' }}>{latestEvalRun.score}/10</strong>
+                <span style={{ marginLeft: '0.5rem', color: '#666' }}>
+                  ({latestEvalRun.passedCases}/{latestEvalRun.totalCases} passed)
+                </span>
+              </div>
+              <span style={{ fontSize: '0.875rem', color: '#666' }}>
+                {new Date(latestEvalRun.createdAt).toLocaleString()}
+              </span>
+            </div>
+
+            {/* Show failed cases */}
+            {latestEvalRun.details.filter((d) => !d.passed).length > 0 && (
+              <div style={{ marginTop: '1rem' }}>
+                <strong style={{ fontSize: '0.875rem', color: '#c62828' }}>Failed Cases:</strong>
+                {latestEvalRun.details
+                  .filter((d) => !d.passed)
+                  .slice(0, 2)
+                  .map((failedCase, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        marginTop: '0.5rem',
+                        padding: '0.5rem',
+                        backgroundColor: '#fff',
+                        borderRadius: '4px',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <div>
+                        <strong>Q:</strong> {failedCase.prompt}
+                      </div>
+                      <div style={{ color: '#666', marginTop: '0.25rem' }}>
+                        <strong>A:</strong> {failedCase.response.slice(0, 150)}...
+                      </div>
+                      <div style={{ color: '#c62828', marginTop: '0.25rem' }}>
+                        Missing: {failedCase.missingKeywords.join(', ')}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Eval Cases */}
+        <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Eval Cases ({evalCases.length})</h3>
+        {evalCases.length === 0 ? (
+          <p style={{ color: '#666', fontSize: '0.875rem' }}>
+            No eval cases defined. Add cases to evaluate your module's quality.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {evalCases.map((ec) => (
+              <div
+                key={ec.id}
+                style={{
+                  padding: '0.75rem',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '4px',
+                  fontSize: '0.875rem',
+                }}
+              >
+                <div>{ec.prompt}</div>
+                {ec.expectedKeywords.length > 0 && (
+                  <div style={{ marginTop: '0.25rem', color: '#666' }}>
+                    Keywords: {ec.expectedKeywords.join(', ')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add Case Form */}
+        {showAddEvalCase && (
+          <div
+            style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '8px',
+            }}
+          >
+            <h4 style={{ margin: '0 0 1rem' }}>Add Eval Case</h4>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>Prompt</label>
+              <input
+                type="text"
+                value={newCasePrompt}
+                onChange={(e) => setNewCasePrompt(e.target.value)}
+                placeholder="What question should the module answer?"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>
+                Expected Keywords (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={newCaseKeywords}
+                onChange={(e) => setNewCaseKeywords(e.target.value)}
+                placeholder="keyword1, keyword2, ..."
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={handleAddEvalCase}
+                disabled={!newCasePrompt.trim()}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: newCasePrompt.trim() ? '#0070f3' : '#ccc',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: newCasePrompt.trim() ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Add
+              </button>
+              <button
+                onClick={() => setShowAddEvalCase(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </div>
