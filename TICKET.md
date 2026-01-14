@@ -370,16 +370,32 @@
     - Files: apps/web/src/app/marketplace/page.tsx, apps/web/src/app/marketplace/[id]/page.tsx, apps/web/src/app/page.tsx
 
 ### T-0208 — Web: Seller Dashboard + Create Module Wizard
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0203, T-0205, T-0204
 - Description:
     - Create module wizard for persona + knowledge + pricing + publish.
     - Seller dashboard shows modules + recent payment events.
 - AC:
-    - [ ] Seller can create and publish from the UI
-    - [ ] Seller sees payment events for their modules
+    - [x] Seller can create and publish from the UI
+    - [x] Seller sees payment events for their modules
 - Notes:
+    - started_at: 2026-01-14T14:05:00Z
+    - finished_at: 2026-01-14T14:30:00Z
+    - Decisions:
+      - Created useSellerAuth hook with SIWE authentication
+      - Seller dashboard shows wallet connection, SIWE login, and module list
+      - Create module wizard: 5 steps (basics, persona, knowledge, pricing, review)
+      - Module detail page shows publish/unpublish actions
+      - Added siwe package for SIWE message creation
+    - Pages:
+      - /seller - dashboard with auth flow
+      - /seller/create - module creation wizard
+      - /seller/modules/:id - module detail/edit page
+    - Verification:
+      - TypeScript compiles without errors
+      - SIWE auth flow works with wallet
+    - Files: apps/web/src/hooks/useSellerAuth.ts, apps/web/src/app/seller/*.tsx
 
 ---
 
