@@ -7,6 +7,7 @@ import { checkRedisConnection } from './lib/redis.js';
 import { authPlugin } from './plugins/auth.js';
 import { premiumRoutes } from './routes/premium.js';
 import { authRoutes } from './routes/auth.js';
+import { testLLMRoutes } from './routes/test-llm.js';
 
 // Validate config early - will exit if invalid
 const config = getConfig();
@@ -62,6 +63,7 @@ fastify.get('/api/test-shared', async () => {
 // Register routes
 await fastify.register(authRoutes);
 await fastify.register(premiumRoutes);
+await fastify.register(testLLMRoutes);
 
 try {
   await fastify.listen({ port: config.API_PORT, host: config.API_HOST });

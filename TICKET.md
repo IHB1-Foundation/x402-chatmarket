@@ -304,16 +304,28 @@
 ## EPIC 3 — Chat + RAG + Paid Gate
 
 ### T-0301 — LLM Provider Abstraction
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0003
 - Description:
     - Implement provider interface: completion + embeddings.
     - Allow `LLM_PROVIDER=mock` for local tests.
 - AC:
-    - [ ] Provider can be swapped via env vars
-    - [ ] API can produce a response using mock provider
+    - [x] Provider can be swapped via env vars
+    - [x] API can produce a response using mock provider
 - Notes:
+    - started_at: 2026-01-14T12:00:00Z
+    - finished_at: 2026-01-14T12:15:00Z
+    - Decisions:
+      - Created LLMProvider interface with completion() and embedding() methods
+      - MockProvider generates deterministic responses/embeddings for testing
+      - OpenAIProvider uses native fetch API for chat/completions and embeddings
+      - Provider selected via LLM_PROVIDER env var (mock|openai|anthropic)
+      - Mock embedding generates normalized 1536-dim vector from text hash
+    - Verification:
+      - `LLM_PROVIDER=mock` produces mock responses via test endpoints
+      - Provider swappable by changing env var without code changes
+    - Files: apps/api/src/services/llm/{types,mock,openai,index}.ts, apps/api/src/routes/test-llm.ts
 
 ### T-0302 — RAG Pipeline + Prompt Assembly
 - Status: TODO
