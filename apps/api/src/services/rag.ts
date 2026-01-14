@@ -7,6 +7,7 @@ export interface RAGRequest {
   userMessage: string;
   chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
   maxContextDocs?: number;
+  additionalContext?: string; // For remix modules: upstream response
 }
 
 export interface RAGResponse {
@@ -48,14 +49,15 @@ function buildMessages(
   module: ModuleData,
   contextString: string,
   userMessage: string,
-  chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+  chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>,
+  additionalContext?: string
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
   // System message with persona
   const systemPrompt = module.personaPrompt || `You are ${module.name}, a helpful AI assistant.`;
 
-  const systemMessage = `${systemPrompt}
+  let systemMessage = `${systemPrompt}
 
 ## Instructions
 - Answer the user's questions based on the CONTEXT provided below.
@@ -65,6 +67,16 @@ function buildMessages(
 
 ## CONTEXT
 ${contextString || '(No relevant context found)'}`;
+
+  // Add additional context for remix modules (upstream response)
+  if (additionalContext) {
+    systemMessage += `
+
+## UPSTREAM CONTEXT
+${additionalContext}
+
+Note: Consider the upstream context when formulating your response. You may enhance, modify, or add your own perspective to this information.`;
+  }
 
   messages.push({ role: 'system', content: systemMessage });
 
@@ -83,7 +95,7 @@ ${contextString || '(No relevant context found)'}`;
 
 // Main RAG function
 export async function executeRAG(request: RAGRequest): Promise<RAGResponse> {
-  const { moduleId, userMessage, chatHistory, maxContextDocs = 5 } = request;
+  const { moduleId, userMessage, chatHistory, maxContextDocs = 5, additionalContext } = request;
   const pool = getPool();
 
   // Fetch module data
@@ -109,7 +121,7 @@ export async function executeRAG(request: RAGRequest): Promise<RAGResponse> {
   const contextString = buildContextString(relevantDocs);
 
   // Build messages
-  const messages = buildMessages(module, contextString, userMessage, chatHistory);
+  const messages = buildMessages(module, contextString, userMessage, chatHistory, additionalContext);
 
   // Generate completion
   const completion = await generateCompletion(messages, {

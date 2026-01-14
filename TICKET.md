@@ -664,7 +664,7 @@
     - Files: apps/api/src/routes/seller.ts (updated)
 
 ### T-0404 — Remix Runtime Execution: Upstream Paid Call + Final Answer
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0304, T-0403
 - Description:
@@ -674,9 +674,32 @@
         - Remix composes final answer using upstream response + delta persona/knowledge
     - Persist both payment events.
 - AC:
-    - [ ] Single buyer request produces two payment records
-    - [ ] UI displays both events (buyer→remix and remix→upstream)
+    - [x] Single buyer request produces two payment records
+    - [x] UI displays both events (buyer→remix and remix→upstream)
 - Notes:
+    - started_at: 2026-01-14T18:05:00Z
+    - finished_at: 2026-01-14T18:35:00Z
+    - Decisions:
+      - Extended ModuleInfo to include type, upstreamModuleId, remixPolicy, personaPrompt
+      - Chat endpoint detects remix modules and handles upstream call
+      - Uses buildAgentPaymentHeader to create x402 payment for upstream
+      - Calls upstream API endpoint with agent payment header
+      - RAG service extended with additionalContext for upstream response injection
+      - Upstream response injected as UPSTREAM CONTEXT in LLM prompt
+      - Both payments persisted and returned in response
+      - Web UI displays upstream payment info in separate orange banner
+    - Flow:
+      1. Buyer pays remix module (normal x402 flow)
+      2. Remix detected: build agent payment header for upstream
+      3. Call upstream /api/modules/:upstreamId/chat with agent payment
+      4. Get upstream response, inject into remix RAG as additionalContext
+      5. Execute remix RAG with delta persona + upstream context
+      6. Return both payment events to client
+    - Verification:
+      - TypeScript compiles without errors
+      - API returns upstreamPayment in response
+      - Web UI shows upstream payment banner
+    - Files: apps/api/src/routes/chat.ts, apps/api/src/services/rag.ts, apps/web/src/app/chat/[id]/page.tsx
 
 ### T-0405 — Web: Remix Creation UI + Funding Guidance
 - Status: TODO

@@ -17,6 +17,10 @@ import {
   type SessionPolicy,
   type SessionPassInfo,
 } from '../services/session-pass.js';
+import {
+  buildAgentPaymentHeader,
+  getAgentWallet,
+} from '../services/agent-wallet.js';
 
 const ChatRequestSchema = z.object({
   chatId: z.string().uuid().optional().nullable(),
@@ -30,12 +34,29 @@ interface ModuleInfo {
   id: string;
   name: string;
   status: string;
+  type: 'base' | 'remix';
   payTo: string;
   priceAmount: string;
   pricingMode: string;
   sessionPolicy: SessionPolicy | null;
   network: string;
   assetContract: string;
+  personaPrompt: string;
+  upstreamModuleId: string | null;
+  remixPolicy: {
+    upstreamWeight?: number;
+    appendMode?: 'before' | 'after' | 'replace';
+    upstreamPayTo?: string;
+    upstreamPriceAmount?: string;
+  } | null;
+}
+
+interface UpstreamPayment {
+  txHash?: string;
+  from?: string;
+  to?: string;
+  value?: string;
+  network?: string;
 }
 
 export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
@@ -59,7 +80,8 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Fetch module
       const moduleResult = await pool.query(
-        `SELECT id, name, status, pay_to, price_amount, pricing_mode, session_policy, network, asset_contract
+        `SELECT id, name, status, type, pay_to, price_amount, pricing_mode, session_policy,
+                network, asset_contract, persona_prompt, upstream_module_id, remix_policy
          FROM modules WHERE id = $1`,
         [id]
       );
@@ -72,12 +94,16 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
         id: moduleResult.rows[0].id,
         name: moduleResult.rows[0].name,
         status: moduleResult.rows[0].status,
+        type: moduleResult.rows[0].type as 'base' | 'remix',
         payTo: moduleResult.rows[0].pay_to,
         priceAmount: moduleResult.rows[0].price_amount,
         pricingMode: moduleResult.rows[0].pricing_mode,
         sessionPolicy: moduleResult.rows[0].session_policy as SessionPolicy | null,
         network: moduleResult.rows[0].network,
         assetContract: moduleResult.rows[0].asset_contract,
+        personaPrompt: moduleResult.rows[0].persona_prompt || '',
+        upstreamModuleId: moduleResult.rows[0].upstream_module_id,
+        remixPolicy: moduleResult.rows[0].remix_policy,
       };
 
       // Only allow chat with published modules
@@ -308,11 +334,108 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
           }
         }
 
-        const ragResult = await executeRAG({
-          moduleId: id,
-          userMessage: message,
-          chatHistory,
-        });
+        let ragResult;
+        let upstreamPayment: UpstreamPayment | undefined;
+
+        // Handle remix module: call upstream first
+        if (module.type === 'remix' && module.upstreamModuleId && module.remixPolicy) {
+          fastify.log.info({ moduleId: id, upstreamId: module.upstreamModuleId }, 'Executing remix with upstream call');
+
+          // Get upstream module info
+          const upstreamResult = await pool.query(
+            `SELECT id, name, pay_to, price_amount, network, asset_contract
+             FROM modules WHERE id = $1 AND status = 'published'`,
+            [module.upstreamModuleId]
+          );
+
+          if (upstreamResult.rows.length === 0) {
+            return reply.status(500).send({ error: 'Upstream module not available' });
+          }
+
+          const upstream = upstreamResult.rows[0];
+
+          // Build payment header for upstream using agent wallet
+          let upstreamPaymentHeader: string;
+          try {
+            upstreamPaymentHeader = await buildAgentPaymentHeader({
+              moduleId: id,
+              payTo: upstream.pay_to,
+              value: upstream.price_amount,
+              network: upstream.network,
+              asset: upstream.asset_contract,
+            });
+          } catch (err) {
+            fastify.log.error(err, 'Failed to build agent payment header');
+            return reply.status(500).send({
+              error: 'Remix agent wallet not configured or unfunded',
+              details: 'Please fund the agent wallet to enable upstream calls',
+            });
+          }
+
+          // Call upstream API with agent payment
+          const config = await import('../config.js').then((m) => m.getConfig());
+          const apiUrl = config.API_URL || `http://localhost:${config.API_PORT}`;
+
+          const upstreamResponse = await fetch(`${apiUrl}/api/modules/${module.upstreamModuleId}/chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-PAYMENT': upstreamPaymentHeader,
+            },
+            body: JSON.stringify({
+              chatId: null, // New chat for upstream
+              message,
+              mode: 'paid',
+            }),
+          });
+
+          const upstreamData = await upstreamResponse.json() as {
+            chatId?: string;
+            reply?: string;
+            payment?: UpstreamPayment;
+            error?: string;
+          };
+
+          if (!upstreamResponse.ok) {
+            // Record failed upstream payment
+            await recordPayment(pool, {
+              moduleId: module.upstreamModuleId,
+              payerWallet: (await getAgentWallet(id))?.walletAddress || 'unknown',
+              payTo: upstream.pay_to,
+              value: upstream.price_amount,
+              network: upstream.network,
+              event: 'failed',
+              error: upstreamData.error || 'Upstream call failed',
+            });
+
+            fastify.log.error({ upstreamData }, 'Upstream call failed');
+            return reply.status(500).send({
+              error: 'Upstream module call failed',
+              details: upstreamData.error,
+            });
+          }
+
+          // Record upstream payment success
+          if (upstreamData.payment) {
+            upstreamPayment = upstreamData.payment;
+          }
+
+          // Now execute remix RAG with upstream context
+          const upstreamReply = upstreamData.reply || '';
+          ragResult = await executeRAG({
+            moduleId: id,
+            userMessage: message,
+            chatHistory,
+            additionalContext: `[Upstream module response]: ${upstreamReply}`,
+          });
+        } else {
+          // Normal module: just execute RAG
+          ragResult = await executeRAG({
+            moduleId: id,
+            userMessage: message,
+            chatHistory,
+          });
+        }
 
         // Create or get chat
         const chatResult = await getOrCreateChat(pool, chatId, id, verifyResult.payer);
@@ -332,6 +455,7 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
             value: string;
             network: string;
           };
+          upstreamPayment?: UpstreamPayment;
           sessionPass?: SessionPassInfo;
         } = {
           chatId: chatResult.id,
@@ -344,6 +468,11 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
             network: module.network,
           },
         };
+
+        // Include upstream payment if this was a remix
+        if (upstreamPayment) {
+          response.upstreamPayment = upstreamPayment;
+        }
 
         // Issue session pass for per_session modules
         if (

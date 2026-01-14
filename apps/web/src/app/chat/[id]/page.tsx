@@ -28,6 +28,14 @@ interface SessionPassInfo {
   expiresAt: number;
 }
 
+interface UpstreamPaymentInfo {
+  txHash?: string;
+  from?: string;
+  to?: string;
+  value?: string;
+  network?: string;
+}
+
 interface ModuleInfo {
   id: string;
   name: string;
@@ -64,6 +72,7 @@ export default function ChatPage() {
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [paymentRequirements, setPaymentRequirements] = useState<any>(null);
   const [sessionPass, setSessionPass] = useState<SessionPassInfo | null>(null);
+  const [upstreamPayment, setUpstreamPayment] = useState<UpstreamPaymentInfo | null>(null);
 
   // Fetch module info
   useEffect(() => {
@@ -198,6 +207,7 @@ export default function ChatPage() {
       // Success
       if (data.chatId) setChatId(data.chatId);
       if (data.payment) setPaymentInfo(data.payment);
+      if (data.upstreamPayment) setUpstreamPayment(data.upstreamPayment);
 
       // Handle session pass in response
       if (data.sessionPass) {
@@ -323,6 +333,23 @@ export default function ChatPage() {
             TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-8)}
             {' | '}
             {formatPrice(paymentInfo.value || '0')}
+          </div>
+        </div>
+      )}
+
+      {/* Upstream Payment Info (for remix modules) */}
+      {upstreamPayment && (
+        <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fff3e0', borderRadius: '8px', fontSize: '0.875rem' }}>
+          <strong>Upstream Payment (Remix)</strong>
+          <div style={{ marginTop: '0.25rem', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+            TX: {upstreamPayment.txHash?.slice(0, 10)}...{upstreamPayment.txHash?.slice(-8)}
+            {' | '}
+            {formatPrice(upstreamPayment.value || '0')}
+            {' | '}
+            To: {upstreamPayment.to?.slice(0, 6)}...{upstreamPayment.to?.slice(-4)}
+          </div>
+          <div style={{ marginTop: '0.25rem', fontSize: '0.7rem', color: '#666' }}>
+            This module paid the upstream module to get enhanced knowledge
           </div>
         </div>
       )}
