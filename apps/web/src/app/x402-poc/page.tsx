@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect, useSignTypedData } from 'wagmi';
 import type { PaymentRequirements } from '@soulforge/shared';
+import { getClientX402Config } from '../../lib/x402-config';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -19,6 +20,7 @@ export default function X402PocPage(): React.ReactElement {
   const { disconnect } = useDisconnect();
   const { signTypedDataAsync } = useSignTypedData();
 
+  const x402Config = useMemo(() => getClientX402Config(), []);
   const [message, setMessage] = useState('Hello from x402 POC!');
   const [logs, setLogs] = useState<DebugLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,23 +36,8 @@ export default function X402PocPage(): React.ReactElement {
   const buildPaymentHeader = async (requirements: PaymentRequirements): Promise<string> => {
     if (!address) throw new Error('Wallet not connected');
 
-    // EIP-712 domain and types for x402 payment authorization
-    const domain = {
-      name: 'x402',
-      version: '1',
-      chainId: 84532, // Base Sepolia
-    } as const;
-
-    const types = {
-      PaymentAuthorization: [
-        { name: 'from', type: 'address' },
-        { name: 'to', type: 'address' },
-        { name: 'value', type: 'uint256' },
-        { name: 'validAfter', type: 'uint256' },
-        { name: 'validBefore', type: 'uint256' },
-        { name: 'nonce', type: 'uint256' },
-      ],
-    } as const;
+    // Use config-driven EIP-712 domain and types
+    const { domain, types } = x402Config;
 
     const validAfter = Math.floor(Date.now() / 1000);
     const validBefore = validAfter + requirements.maxTimeoutSeconds;
@@ -65,7 +52,10 @@ export default function X402PocPage(): React.ReactElement {
       nonce: BigInt(nonce),
     };
 
-    addLog('info', 'Requesting wallet signature...', { domain, types, message: messageToSign });
+    addLog('info', 'Requesting wallet signature...', {
+      domain: { ...domain },
+      types: { ...types },
+    });
 
     const signature = await signTypedDataAsync({
       domain,

@@ -147,7 +147,7 @@
     - Files: apps/web/src/app/x402-poc/page.tsx, apps/web/src/lib/wagmi.ts, apps/web/src/providers/WagmiProvider.tsx
 
 ### T-0103 — Payment Config Abstraction (Network/Token/Domain)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0101, T-0102
 - Description:
@@ -155,9 +155,21 @@
     - Centralize EIP-712 domain settings in config (env-driven).
     - Ensure no hardcoded addresses/chain IDs in code paths.
 - AC:
-    - [ ] Changing env vars changes payment requirements without code edits
-    - [ ] No hardcoded chainId/asset contract in payment code
+    - [x] Changing env vars changes payment requirements without code edits
+    - [x] No hardcoded chainId/asset contract in payment code
 - Notes:
+    - started_at: 2026-01-14T10:55:00Z
+    - finished_at: 2026-01-14T11:10:00Z
+    - Decisions:
+      - Created @soulforge/shared/x402 module with EIP-712 types and domain builder
+      - Web app reads NEXT_PUBLIC_X402_* vars for client-side config
+      - API uses config.X402_NETWORK, X402_ASSET_CONTRACT, X402_CHAIN_ID, etc.
+      - EIP-712 domain/types centralized in getX402EIP712Domain() and X402_EIP712_TYPES
+    - Verification:
+      - API x402.ts uses config.X402_NETWORK (line 25), config.X402_ASSET_CONTRACT (line 27)
+      - Web x402-poc/page.tsx uses getClientX402Config() which reads NEXT_PUBLIC_* env vars
+      - No hardcoded chainId/asset in payment generation code
+    - Files: packages/shared/src/x402/index.ts, apps/web/src/lib/x402-config.ts, apps/web/.env.example
 
 ---
 
