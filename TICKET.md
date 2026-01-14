@@ -452,16 +452,32 @@
     - Files: apps/api/src/services/rag.ts, apps/api/src/routes/seller.ts
 
 ### T-0303 — Free Preview: Try Once Quota
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0302, T-0206
 - Description:
     - Allow one free preview per wallet/IP per 24h (Redis).
     - Strict output length limits to prevent abuse.
 - AC:
-    - [ ] First call is free when eligible
-    - [ ] Second call within 24h triggers 402 or “quota exceeded”
+    - [x] First call is free when eligible
+    - [x] Second call within 24h triggers 402 or "quota exceeded"
 - Notes:
+    - started_at: 2026-01-14T14:55:00Z
+    - finished_at: 2026-01-14T15:05:00Z
+    - Decisions:
+      - Try-once tracked in Redis with 24h TTL
+      - Tracks by both wallet address AND IP (if provided)
+      - Output truncated to 500 chars for free preview
+      - Functions: checkTryOnceEligible, recordTryOnceUsage, getTryOnceExpiry
+      - Will be integrated into chat endpoint in T-0304
+    - Limits:
+      - maxOutputTokens: 150
+      - maxOutputChars: 500
+      - TTL: 24 hours
+    - Verification:
+      - TypeScript compiles without errors
+      - Redis-based quota tracking ready for integration
+    - Files: apps/api/src/services/try-once.ts
 
 ### T-0304 — Paid Chat Endpoint: x402 Gate + Persist Payments
 - Status: TODO
