@@ -4,6 +4,7 @@ import type { Module } from '@soulforge/shared';
 import { getConfig } from './config.js';
 import { checkDbConnection, checkPgvector } from './lib/db.js';
 import { checkRedisConnection } from './lib/redis.js';
+import { premiumRoutes } from './routes/premium.js';
 
 // Validate config early - will exit if invalid
 const config = getConfig();
@@ -52,6 +53,9 @@ fastify.get('/api/test-shared', async () => {
   };
   return { message: 'Shared package works!', testModule };
 });
+
+// Register routes
+await fastify.register(premiumRoutes);
 
 try {
   await fastify.listen({ port: config.API_PORT, host: config.API_HOST });

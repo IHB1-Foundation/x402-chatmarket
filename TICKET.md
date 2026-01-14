@@ -91,7 +91,7 @@
 ## EPIC 1 — x402 End-to-End Proof (Ship This First)
 
 ### T-0101 — Backend x402 POC: 402 → Verify/Settle → 200
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0002, T-0003
 - Description:
@@ -100,11 +100,24 @@
     - If `X-PAYMENT` present, call facilitator verify + settle.
     - Record result to `payments` table.
 - AC:
-    - [ ] Without payment header: returns 402 with valid JSON paymentRequirements
-    - [ ] With valid payment header: returns 200 + payload
-    - [ ] On verify/settle failure: returns a clear error (402 or 4xx) and stores failure record
-    - [ ] payments table stores both success and failure attempts
+    - [x] Without payment header: returns 402 with valid JSON paymentRequirements
+    - [x] With valid payment header: returns 200 + payload
+    - [x] On verify/settle failure: returns a clear error (402 or 4xx) and stores failure record
+    - [x] payments table stores both success and failure attempts
 - Notes:
+    - started_at: 2026-01-14T10:10:00Z
+    - finished_at: 2026-01-14T10:25:00Z
+    - Decisions:
+      - Created x402 service with verify/settle functions supporting mock and real facilitator
+      - In-memory payments repository for POC (will use DB in T-0201)
+      - X402_MOCK_MODE env var enables local testing without facilitator
+      - Mock mode decodes base64 JSON payment header for testing
+    - Verification:
+      - `curl -X POST .../api/premium/echo` without X-PAYMENT returns 402 with paymentRequirements
+      - `curl -X POST .../api/premium/echo -H "X-PAYMENT: <base64>"` returns 200 with echo + payment info
+      - Invalid payment header returns 402 and stores failure record in payments
+      - `/api/premium/payments` shows all stored payments (settled/failed)
+    - Files: apps/api/src/services/x402.ts, apps/api/src/repositories/payments.ts, apps/api/src/routes/premium.ts
 
 ### T-0102 — Web x402 POC: Handle 402 + Wallet Sign + Retry with X-PAYMENT
 - Status: TODO
