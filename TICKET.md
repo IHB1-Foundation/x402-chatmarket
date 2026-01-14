@@ -426,14 +426,30 @@
     - Files: apps/api/src/services/llm/{types,mock,openai,index}.ts, apps/api/src/routes/test-llm.ts
 
 ### T-0302 — RAG Pipeline + Prompt Assembly
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0204, T-0301
 - Description:
     - Query embedding → TopK docs → context injection → completion.
 - AC:
-    - [ ] Responses demonstrate knowledge injection in a reproducible test
+    - [x] Responses demonstrate knowledge injection in a reproducible test
 - Notes:
+    - started_at: 2026-01-14T14:35:00Z
+    - finished_at: 2026-01-14T14:50:00Z
+    - Decisions:
+      - Created rag.ts service with executeRAG and testRAG functions
+      - Prompt structure: system (persona + instructions + context) + history + user
+      - Context built from retrieved docs with numbered references
+      - Returns reply, usage stats, and context info (docs used, similarities)
+      - Added test-rag endpoint for sellers to verify their module's RAG
+    - Prompt template:
+      - System: persona prompt + instructions + CONTEXT section
+      - Instructions: use context, don't make up info, be concise
+    - Endpoint: POST /api/seller/modules/:id/test-rag
+    - Verification:
+      - TypeScript compiles without errors
+      - RAG pipeline integrates knowledge retrieval + LLM completion
+    - Files: apps/api/src/services/rag.ts, apps/api/src/routes/seller.ts
 
 ### T-0303 — Free Preview: Try Once Quota
 - Status: TODO

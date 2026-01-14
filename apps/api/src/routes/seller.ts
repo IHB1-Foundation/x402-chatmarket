@@ -9,6 +9,7 @@ import {
   deleteModuleDocuments,
   countModuleDocuments,
 } from '../services/knowledge.js';
+import { testRAG } from '../services/rag.js';
 
 const CreateModuleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -546,6 +547,46 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       } catch (err) {
         fastify.log.error(err, 'Failed to retrieve documents');
         return reply.status(500).send({ error: 'Failed to retrieve documents' });
+      }
+    }
+  );
+
+  // Test RAG pipeline (for verification)
+  const TestRAGSchema = z.object({
+    query: z.string().min(1).max(500),
+  });
+
+  fastify.post<{ Params: { id: string }; Body: z.infer<typeof TestRAGSchema> }>(
+    '/api/seller/modules/:id/test-rag',
+    { preValidation: [fastify.authenticate] },
+    async (
+      request: FastifyRequest<{ Params: { id: string }; Body: z.infer<typeof TestRAGSchema> }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      // Verify ownership
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const parseResult = TestRAGSchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid request',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const { query } = parseResult.data;
+
+      try {
+        const result = await testRAG(id, query);
+        return reply.send(result);
+      } catch (err) {
+        fastify.log.error(err, 'Failed to execute RAG');
+        return reply.status(500).send({ error: 'Failed to execute RAG pipeline' });
       }
     }
   );
