@@ -2,6 +2,13 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { getPool } from '../lib/db.js';
 import { getConfig } from '../config.js';
+import {
+  ingestQAPairs,
+  ingestDocuments,
+  retrieveTopK,
+  deleteModuleDocuments,
+  countModuleDocuments,
+} from '../services/knowledge.js';
 
 const CreateModuleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -211,6 +218,235 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         createdAt: module.created_at,
         updatedAt: module.updated_at,
       });
+    }
+  );
+
+  // Knowledge ingestion schemas
+  const AddQASchema = z.object({
+    items: z
+      .array(
+        z.object({
+          question: z.string().min(1).max(500),
+          answer: z.string().min(1).max(2000),
+        })
+      )
+      .min(1)
+      .max(200),
+  });
+
+  const AddDocumentsSchema = z.object({
+    documents: z
+      .array(
+        z.object({
+          title: z.string().min(1).max(200),
+          content: z.string().min(1).max(50000),
+        })
+      )
+      .min(1)
+      .max(20),
+  });
+
+  const TestRetrievalSchema = z.object({
+    query: z.string().min(1).max(500),
+    k: z.number().int().positive().max(20).default(5),
+  });
+
+  // Helper to verify module ownership
+  async function verifyModuleOwnership(moduleId: string, userId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query('SELECT owner_user_id FROM modules WHERE id = $1', [moduleId]);
+    return result.rows.length > 0 && result.rows[0].owner_user_id === userId;
+  }
+
+  // Add Q/A pairs to module
+  fastify.post<{ Params: { id: string }; Body: z.infer<typeof AddQASchema> }>(
+    '/api/seller/modules/:id/qa',
+    { preValidation: [fastify.authenticate] },
+    async (
+      request: FastifyRequest<{ Params: { id: string }; Body: z.infer<typeof AddQASchema> }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      // Verify ownership
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const parseResult = AddQASchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid request',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const { items } = parseResult.data;
+
+      try {
+        const stored = await ingestQAPairs(id, items);
+        return reply.status(201).send({
+          message: `Successfully added ${stored.length} Q/A pairs`,
+          count: stored.length,
+          documents: stored.map((d) => ({
+            id: d.id,
+            title: d.title,
+            sourceType: d.sourceType,
+            createdAt: d.createdAt,
+          })),
+        });
+      } catch (err) {
+        fastify.log.error(err, 'Failed to ingest Q/A pairs');
+        return reply.status(500).send({ error: 'Failed to ingest Q/A pairs' });
+      }
+    }
+  );
+
+  // Add documents to module
+  fastify.post<{ Params: { id: string }; Body: z.infer<typeof AddDocumentsSchema> }>(
+    '/api/seller/modules/:id/documents',
+    { preValidation: [fastify.authenticate] },
+    async (
+      request: FastifyRequest<{ Params: { id: string }; Body: z.infer<typeof AddDocumentsSchema> }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      // Verify ownership
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const parseResult = AddDocumentsSchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid request',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const { documents } = parseResult.data;
+
+      try {
+        const stored = await ingestDocuments(id, documents);
+        return reply.status(201).send({
+          message: `Successfully added ${stored.length} document chunks`,
+          count: stored.length,
+          documents: stored.map((d) => ({
+            id: d.id,
+            title: d.title,
+            sourceType: d.sourceType,
+            createdAt: d.createdAt,
+          })),
+        });
+      } catch (err) {
+        fastify.log.error(err, 'Failed to ingest documents');
+        return reply.status(500).send({ error: 'Failed to ingest documents' });
+      }
+    }
+  );
+
+  // List module documents
+  fastify.get<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/documents',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      // Verify ownership
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const pool = getPool();
+      const result = await pool.query(
+        `SELECT id, source_type, title, content, created_at
+         FROM module_documents
+         WHERE module_id = $1
+         ORDER BY created_at DESC`,
+        [id]
+      );
+
+      return reply.send({
+        count: result.rows.length,
+        documents: result.rows.map((row) => ({
+          id: row.id,
+          sourceType: row.source_type,
+          title: row.title,
+          content: row.content,
+          createdAt: row.created_at,
+        })),
+      });
+    }
+  );
+
+  // Delete all documents for module
+  fastify.delete<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/documents',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      // Verify ownership
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const deleted = await deleteModuleDocuments(id);
+      return reply.send({
+        message: `Deleted ${deleted} documents`,
+        count: deleted,
+      });
+    }
+  );
+
+  // Test retrieval (for verification)
+  fastify.post<{ Params: { id: string }; Body: z.infer<typeof TestRetrievalSchema> }>(
+    '/api/seller/modules/:id/retrieve',
+    { preValidation: [fastify.authenticate] },
+    async (
+      request: FastifyRequest<{ Params: { id: string }; Body: z.infer<typeof TestRetrievalSchema> }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+
+      // Verify ownership
+      if (!(await verifyModuleOwnership(id, user.sub))) {
+        return reply.status(403).send({ error: 'Access denied or module not found' });
+      }
+
+      const parseResult = TestRetrievalSchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid request',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const { query, k } = parseResult.data;
+
+      try {
+        const results = await retrieveTopK(id, query, k);
+        return reply.send({
+          query,
+          k,
+          results: results.map((r) => ({
+            id: r.id,
+            sourceType: r.sourceType,
+            title: r.title,
+            content: r.content,
+            similarity: r.similarity,
+          })),
+        });
+      } catch (err) {
+        fastify.log.error(err, 'Failed to retrieve documents');
+        return reply.status(500).send({ error: 'Failed to retrieve documents' });
+      }
     }
   );
 }

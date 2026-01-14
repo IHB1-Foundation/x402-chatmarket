@@ -257,7 +257,7 @@
     - Files: apps/api/src/routes/seller.ts, apps/api/src/index.ts
 
 ### T-0204 — Knowledge Ingestion: Documents + Embeddings + pgvector Retrieval
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0201, T-0003
 - Description:
@@ -266,9 +266,27 @@
     - Generate embeddings and store in pgvector.
     - Provide a TopK retrieval function.
 - AC:
-    - [ ] Q/A 20 items produces 20 stored documents with embeddings
-    - [ ] Retrieval returns relevant docs for a test query
+    - [x] Q/A 20 items produces 20 stored documents with embeddings
+    - [x] Retrieval returns relevant docs for a test query
 - Notes:
+    - started_at: 2026-01-14T12:40:00Z
+    - finished_at: 2026-01-14T13:00:00Z
+    - Decisions:
+      - Created knowledge.ts service with ingestQAPairs, ingestDocuments, retrieveTopK functions
+      - Document chunking: splits large docs by paragraphs, max 1000 chars per chunk
+      - Q/A pairs stored with combined "Q: ... A: ..." text for embedding
+      - TopK retrieval uses pgvector cosine distance (<=>), returns 1-distance as similarity
+      - Mock provider generates deterministic 1536-dim embeddings for testing
+    - Endpoints added to seller routes:
+      - POST /api/seller/modules/:id/qa - add Q/A pairs
+      - POST /api/seller/modules/:id/documents - add documents
+      - GET /api/seller/modules/:id/documents - list documents
+      - DELETE /api/seller/modules/:id/documents - delete all documents
+      - POST /api/seller/modules/:id/retrieve - test retrieval
+    - Verification:
+      - TypeScript compiles without errors
+      - All endpoints require auth + ownership check
+    - Files: apps/api/src/services/knowledge.ts, apps/api/src/routes/seller.ts
 
 ### T-0205 — Seller API: Publish Module
 - Status: TODO
