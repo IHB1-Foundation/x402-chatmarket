@@ -10,6 +10,7 @@ import {
   countModuleDocuments,
 } from '../services/knowledge.js';
 import { testRAG } from '../services/rag.js';
+import { createAgentWallet, getAgentWallet } from '../services/agent-wallet.js';
 
 const CreateModuleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -588,6 +589,248 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         fastify.log.error(err, 'Failed to execute RAG');
         return reply.status(500).send({ error: 'Failed to execute RAG pipeline' });
       }
+    }
+  );
+
+  // ==================== REMIX MODULE ENDPOINTS ====================
+
+  const CreateRemixSchema = z.object({
+    name: z.string().min(1, 'Name is required').max(100),
+    description: z.string().max(2000).default(''),
+    tags: z.array(z.string().max(50)).max(10).default([]),
+    upstreamModuleId: z.string().uuid('Invalid upstream module ID'),
+    deltaPersonaPrompt: z.string().max(10000).default(''),
+    pricingMode: z.enum(['per_message', 'per_session']),
+    priceAmount: z
+      .string()
+      .regex(/^\d+$/, 'Price must be a non-negative integer string')
+      .refine((val) => BigInt(val) > 0n, 'Price must be greater than 0'),
+    sessionPolicy: z
+      .object({
+        minutes: z.number().int().positive().optional(),
+        messageCredits: z.number().int().positive().optional(),
+      })
+      .optional(),
+    payTo: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid pay_to address'),
+    remixPolicy: z
+      .object({
+        upstreamWeight: z.number().min(0).max(1).default(0.5),
+        appendMode: z.enum(['before', 'after', 'replace']).default('after'),
+      })
+      .optional()
+      .default({}),
+  });
+
+  type CreateRemixRequest = z.infer<typeof CreateRemixSchema>;
+
+  // Create remix module
+  fastify.post<{ Body: CreateRemixRequest }>(
+    '/api/seller/remix',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Body: CreateRemixRequest }>, reply: FastifyReply) => {
+      const parseResult = CreateRemixSchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid request',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const {
+        name,
+        description,
+        tags,
+        upstreamModuleId,
+        deltaPersonaPrompt,
+        pricingMode,
+        priceAmount,
+        sessionPolicy,
+        payTo,
+        remixPolicy,
+      } = parseResult.data;
+
+      // Validate session policy for per_session pricing
+      if (pricingMode === 'per_session' && !sessionPolicy) {
+        return reply.status(400).send({
+          error: 'Invalid request',
+          details: [{ path: ['sessionPolicy'], message: 'Session policy is required for per_session pricing' }],
+        });
+      }
+
+      const user = request.user as { sub: string; address: string; role: string };
+      const config = getConfig();
+      const pool = getPool();
+
+      // Verify upstream module exists and is published
+      const upstreamResult = await pool.query(
+        `SELECT id, name, status, pay_to, price_amount, pricing_mode, network, asset_contract
+         FROM modules WHERE id = $1`,
+        [upstreamModuleId]
+      );
+
+      if (upstreamResult.rows.length === 0) {
+        return reply.status(400).send({
+          error: 'Upstream module not found',
+        });
+      }
+
+      const upstreamModule = upstreamResult.rows[0];
+
+      if (upstreamModule.status !== 'published') {
+        return reply.status(400).send({
+          error: 'Upstream module is not published',
+        });
+      }
+
+      // Create the remix module in a transaction
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Insert remix module
+        const moduleResult = await client.query(
+          `INSERT INTO modules (
+            owner_user_id,
+            type,
+            name,
+            description,
+            tags,
+            status,
+            persona_prompt,
+            pricing_mode,
+            price_amount,
+            session_policy,
+            pay_to,
+            network,
+            asset_contract,
+            upstream_module_id,
+            remix_policy
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          RETURNING id, owner_user_id, type, name, description, tags, status,
+                    persona_prompt, pricing_mode, price_amount, session_policy,
+                    pay_to, network, asset_contract, upstream_module_id, remix_policy,
+                    created_at, updated_at`,
+          [
+            user.sub,
+            'remix',
+            name,
+            description,
+            tags,
+            'draft',
+            deltaPersonaPrompt,
+            pricingMode,
+            priceAmount,
+            sessionPolicy ? JSON.stringify(sessionPolicy) : null,
+            payTo,
+            config.X402_NETWORK,
+            config.X402_ASSET_CONTRACT || '',
+            upstreamModuleId,
+            JSON.stringify({
+              ...remixPolicy,
+              upstreamModuleId,
+              upstreamPayTo: upstreamModule.pay_to,
+              upstreamPriceAmount: upstreamModule.price_amount,
+            }),
+          ]
+        );
+
+        const module = moduleResult.rows[0];
+
+        // Create agent wallet for the remix module
+        let agentWallet;
+        try {
+          agentWallet = await createAgentWallet(module.id);
+        } catch (walletErr) {
+          // If wallet creation fails, rollback and return error
+          await client.query('ROLLBACK');
+          fastify.log.error(walletErr, 'Failed to create agent wallet');
+          return reply.status(500).send({
+            error: 'Failed to create agent wallet. Ensure AGENT_WALLET_ENCRYPTION_KEY is configured.',
+          });
+        }
+
+        await client.query('COMMIT');
+
+        return reply.status(201).send({
+          id: module.id,
+          ownerUserId: module.owner_user_id,
+          type: module.type,
+          name: module.name,
+          description: module.description,
+          tags: module.tags,
+          status: module.status,
+          personaPrompt: module.persona_prompt,
+          pricingMode: module.pricing_mode,
+          priceAmount: module.price_amount,
+          sessionPolicy: module.session_policy,
+          payTo: module.pay_to,
+          network: module.network,
+          assetContract: module.asset_contract,
+          upstreamModuleId: module.upstream_module_id,
+          remixPolicy: module.remix_policy,
+          createdAt: module.created_at,
+          updatedAt: module.updated_at,
+          agentWallet: {
+            address: agentWallet.walletAddress,
+            fundingInstructions: `Fund this wallet with testnet tokens to enable remix payments. Address: ${agentWallet.walletAddress}`,
+          },
+          upstream: {
+            id: upstreamModule.id,
+            name: upstreamModule.name,
+            payTo: upstreamModule.pay_to,
+            priceAmount: upstreamModule.price_amount,
+          },
+        });
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    }
+  );
+
+  // Get agent wallet info for a remix module
+  fastify.get<{ Params: { id: string } }>(
+    '/api/seller/modules/:id/agent-wallet',
+    { preValidation: [fastify.authenticate] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const { id } = request.params;
+      const user = request.user as { sub: string; address: string; role: string };
+      const pool = getPool();
+
+      // Get module and verify ownership
+      const moduleResult = await pool.query(
+        'SELECT id, owner_user_id, type FROM modules WHERE id = $1',
+        [id]
+      );
+
+      if (moduleResult.rows.length === 0) {
+        return reply.status(404).send({ error: 'Module not found' });
+      }
+
+      const module = moduleResult.rows[0];
+
+      if (module.owner_user_id !== user.sub) {
+        return reply.status(403).send({ error: 'Access denied' });
+      }
+
+      if (module.type !== 'remix') {
+        return reply.status(400).send({ error: 'Module is not a remix module' });
+      }
+
+      const agentWallet = await getAgentWallet(id);
+      if (!agentWallet) {
+        return reply.status(404).send({ error: 'Agent wallet not found' });
+      }
+
+      return reply.send({
+        moduleId: id,
+        walletAddress: agentWallet.walletAddress,
+        keyVersion: agentWallet.keyVersion,
+        createdAt: agentWallet.createdAt,
+        fundingInstructions: `Fund this wallet with testnet tokens to enable remix payments. Address: ${agentWallet.walletAddress}`,
+      });
     }
   );
 }

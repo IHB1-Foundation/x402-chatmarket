@@ -631,15 +631,37 @@
     - Files: apps/api/src/services/agent-wallet.ts
 
 ### T-0403 — Seller API: Create Remix Module
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0203, T-0402
 - Description:
     - `POST /api/seller/remix` creates a remix module referencing an upstream module.
 - AC:
-    - [ ] Remix module can be published
-    - [ ] Agent wallet address is available for funding
+    - [x] Remix module can be published
+    - [x] Agent wallet address is available for funding
 - Notes:
+    - started_at: 2026-01-14T17:40:00Z
+    - finished_at: 2026-01-14T18:00:00Z
+    - Decisions:
+      - POST /api/seller/remix creates remix with upstream reference
+      - Validates upstream module exists and is published
+      - Generates agent wallet automatically during creation
+      - Stores remixPolicy with upstreamWeight, appendMode, and upstream payment info
+      - Transaction ensures module + wallet created atomically
+      - GET /api/seller/modules/:id/agent-wallet returns wallet info
+    - Request body:
+      - name, description, tags, upstreamModuleId
+      - deltaPersonaPrompt (persona modifications)
+      - pricingMode, priceAmount, sessionPolicy, payTo
+      - remixPolicy: { upstreamWeight, appendMode }
+    - Response includes:
+      - Module details + agentWallet.address + upstream info
+      - Funding instructions for testnet tokens
+    - Verification:
+      - TypeScript compiles without errors
+      - Endpoints require authentication
+      - Agent wallet created and address returned
+    - Files: apps/api/src/routes/seller.ts (updated)
 
 ### T-0404 — Remix Runtime Execution: Upstream Paid Call + Final Answer
 - Status: TODO
