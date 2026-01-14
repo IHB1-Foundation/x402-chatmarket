@@ -176,15 +176,28 @@
 ## EPIC 2 — Data Model + Auth + Module CRUD
 
 ### T-0201 — DB Schema v1 (Core Tables)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0002
 - Description:
     - Create tables: users, modules, module_documents, payments, chats, chat_messages.
 - AC:
-    - [ ] Migrations run cleanly from empty DB
-    - [ ] API starts with schema applied
+    - [x] Migrations run cleanly from empty DB
+    - [x] API starts with schema applied
 - Notes:
+    - started_at: 2026-01-14T11:15:00Z
+    - finished_at: 2026-01-14T11:30:00Z
+    - Decisions:
+      - All tables defined per PROJECT.md section 14
+      - Idempotent init-db.sql (CREATE IF NOT EXISTS, DO blocks with exception handlers)
+      - pgvector embedding column (1536 dimensions for text-embedding-3-small)
+      - Enum types for role, status, event, etc.
+      - updated_at triggers on users and modules
+    - Tables created: users, modules, module_documents, payments, chats, chat_messages, agent_wallets, eval_cases, eval_runs
+    - Verification (requires Docker):
+      - `docker compose down -v && docker compose up -d` reinitializes DB
+      - `docker compose exec postgres psql -U soulforge -c "\\dt"` lists all tables
+    - Files: infra/init-db.sql, infra/migrations/001_initial_schema.sql
 
 ### T-0202 — Seller Auth (Recommended: SIWE) or Minimal Session
 - Status: TODO
