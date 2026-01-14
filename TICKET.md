@@ -315,16 +315,33 @@
     - Files: apps/api/src/routes/seller.ts
 
 ### T-0206 — Buyer API: Marketplace List/Search/Detail
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0205
 - Description:
     - `GET /api/modules` list/search/filter/sort
     - `GET /api/modules/:id` detail
 - AC:
-    - [ ] Search works by name/description/tags
-    - [ ] Detail includes price, tags, example prompts, eval score fields
+    - [x] Search works by name/description/tags
+    - [x] Detail includes price, tags, example prompts, eval score fields
 - Notes:
+    - started_at: 2026-01-14T13:20:00Z
+    - finished_at: 2026-01-14T13:35:00Z
+    - Decisions:
+      - Public endpoints (no auth required) for marketplace browsing
+      - Only shows published modules (status='published')
+      - Search uses ILIKE on name/description for simplicity
+      - Sort options: newest, oldest, price_asc, price_desc, eval_score
+      - Pagination with page/size params
+      - Detail shows examplePrompts from Q/A titles
+    - Endpoints:
+      - GET /api/modules?q=&tag=&sort=&page=&size= - list/search modules
+      - GET /api/modules/:id - module detail
+      - GET /api/modules/tags - list unique tags with counts
+    - Verification:
+      - TypeScript compiles without errors
+      - Search/filter/sort work correctly
+    - Files: apps/api/src/routes/modules.ts, apps/api/src/index.ts
 
 ### T-0207 — Web: Marketplace UI (List/Search/Detail)
 - Status: TODO
