@@ -1,11 +1,52 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '../components/ui/Button';
-import { Card, CardContent } from '../components/ui/Card';
+import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { Skeleton } from '../components/ui/Skeleton';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+interface Module {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  tags: string[];
+  priceAmount: string;
+  pricingMode: string;
+  evalScore: number | null;
+  featured: boolean;
+}
 
 export default function Home() {
+  const [featuredModules, setFeaturedModules] = useState<Module[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/modules?featured=true&size=6`);
+        if (res.ok) {
+          const data = await res.json();
+          setFeaturedModules(data.modules || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch featured modules:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFeatured();
+  }, []);
+
+  const formatPrice = (amount: string, mode: string) => {
+    const value = parseInt(amount, 10) / 1e6;
+    return `$${value.toFixed(2)}/${mode === 'per_message' ? 'msg' : 'session'}`;
+  };
+
   return (
     <div className="animate-fade-in">
       {/* Hero Section */}
@@ -42,7 +83,7 @@ export default function Home() {
           <h2 className="text-2xl md:text-3xl font-bold text-center text-[var(--color-text-primary)] mb-12">
             How x402 Payment Works
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 step: '1',
@@ -86,79 +127,154 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Featured Modules */}
       <section className="py-16 bg-[var(--color-background-secondary)]">
         <div className="container-app">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
+              Featured Modules
+            </h2>
+            <Link href="/marketplace">
+              <Button variant="ghost" size="sm">
+                View All →
+              </Button>
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} variant="default" padding="md">
+                  <Skeleton variant="text" width="60%" height={24} className="mb-2" />
+                  <Skeleton variant="text" width="100%" height={16} className="mb-1" />
+                  <Skeleton variant="text" width="80%" height={16} className="mb-4" />
+                  <div className="flex gap-2">
+                    <Skeleton variant="rounded" width={60} height={24} />
+                    <Skeleton variant="rounded" width={60} height={24} />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : featuredModules.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredModules.map((module) => (
+                <Link key={module.id} href={`/marketplace/${module.id}`}>
+                  <Card
+                    hoverable
+                    padding="none"
+                    className="h-full overflow-hidden ring-2 ring-[var(--color-primary)]/30"
+                  >
+                    <div className="bg-[var(--color-primary)] text-white text-xs font-medium px-3 py-1 text-center">
+                      Featured
+                    </div>
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="font-semibold text-[var(--color-text-primary)] line-clamp-1">
+                          {module.name}
+                        </h3>
+                        {module.evalScore !== null && (
+                          <Badge variant="success" size="sm">{module.evalScore}/10</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-[var(--color-text-secondary)] mb-4 line-clamp-2 min-h-[2.5rem]">
+                        {module.description || 'AI-powered module'}
+                      </p>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {module.tags.slice(0, 2).map((tag) => (
+                          <Badge key={tag} variant="outline" size="sm">{tag}</Badge>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
+                        <span className="font-semibold text-[var(--color-primary)]">
+                          {formatPrice(module.priceAmount, module.pricingMode)}
+                        </span>
+                        <Badge variant={module.type === 'remix' ? 'warning' : 'primary'} size="sm">
+                          {module.type}
+                        </Badge>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Card variant="bordered" padding="lg" className="text-center">
+              <p className="text-[var(--color-text-secondary)]">
+                No featured modules yet. Check back soon or browse the marketplace.
+              </p>
+              <Link href="/marketplace">
+                <Button variant="secondary" className="mt-4">
+                  Browse All Modules
+                </Button>
+              </Link>
+            </Card>
+          )}
+        </div>
+      </section>
+
+      {/* For Sellers */}
+      <section className="py-16 bg-[var(--color-background)]">
+        <div className="container-app">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-4">
+              For Sellers
+            </h2>
+            <p className="text-[var(--color-text-secondary)]">
+              Create, upload, and monetize AI modules with zero code
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
-                For Buyers
+            <Card variant="bordered" padding="lg" className="text-center">
+              <div className="text-4xl mb-4">🎭</div>
+              <h3 className="font-semibold text-[var(--color-text-primary)] mb-2">
+                Create Persona
               </h3>
-              <ul className="space-y-2 text-[var(--color-text-secondary)]">
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  Browse curated AI personas
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  Pay only for what you use
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  No subscriptions or commitments
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  Transparent payment tracking
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
-                For Sellers
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Define a unique AI character with custom system prompts and example interactions
+              </p>
+            </Card>
+            <Card variant="bordered" padding="lg" className="text-center">
+              <div className="text-4xl mb-4">📚</div>
+              <h3 className="font-semibold text-[var(--color-text-primary)] mb-2">
+                Upload Knowledge
               </h3>
-              <ul className="space-y-2 text-[var(--color-text-secondary)]">
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  Create modules without code
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  Upload Q&A or documents
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  Set your own pricing
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-success)]">✓</span>
-                  Earn from remixes via agent payments
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
-                Remix Economics
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Add Q&A pairs, documents, or external data to power RAG-enhanced responses
+              </p>
+            </Card>
+            <Card variant="bordered" padding="lg" className="text-center">
+              <div className="text-4xl mb-4">💰</div>
+              <h3 className="font-semibold text-[var(--color-text-primary)] mb-2">
+                Monetize via x402
               </h3>
-              <ul className="space-y-2 text-[var(--color-text-secondary)]">
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-primary)]">→</span>
-                  Derivatives pay originals at runtime
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-primary)]">→</span>
-                  No data copying required
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-primary)]">→</span>
-                  Agent-to-agent payments
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--color-primary)]">→</span>
-                  Two payment events per call
-                </li>
-              </ul>
-            </div>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Set your price and earn from every paid chat - automatic settlement to your wallet
+              </p>
+            </Card>
+          </div>
+          <div className="text-center mt-8">
+            <Link href="/seller">
+              <Button size="lg">
+                Start Creating
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Tech Stack */}
+      <section className="py-8 bg-[var(--color-background-secondary)] border-y border-[var(--color-border)]">
+        <div className="container-app">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <span className="text-sm text-[var(--color-text-tertiary)]">Built with:</span>
+            {['x402', 'pgvector RAG', 'SIWE Auth', 'EIP-712', 'USDC'].map((tech) => (
+              <span
+                key={tech}
+                className="px-3 py-1 text-xs font-mono bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-full)] text-[var(--color-text-secondary)]"
+              >
+                {tech}
+              </span>
+            ))}
           </div>
         </div>
       </section>

@@ -1052,7 +1052,7 @@
       - Button, Card, Badge, Input, Tabs used in /, /marketplace, /marketplace/[id], /chat/[id]
 
 ### T-0902 — Landing Page Redesign (Hero + How x402 Works + CTA)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0901
 - Description:
@@ -1069,15 +1069,22 @@
     - Files (planned):
       - `apps/web/src/app/page.tsx` (rewrite with new components)
 - AC:
-    - [ ] `/` contains Hero + How-it-works + Featured + Seller sections
-    - [ ] CTA buttons navigate correctly to `/marketplace` and `/seller`
-    - [ ] Responsive layout works on narrow screens (manual check)
-    - [ ] `pnpm --filter web build` succeeds
+    - [x] `/` contains Hero + How-it-works + Featured + Seller sections
+    - [x] CTA buttons navigate correctly to `/marketplace` and `/seller`
+    - [x] Responsive layout works on narrow screens (manual check)
+    - [x] `pnpm --filter web build` succeeds
 - Notes:
-    - started_at:
-    - finished_at:
+    - started_at: 2026-01-22T11:35:00Z
+    - finished_at: 2026-01-22T11:50:00Z
     - Decisions/Assumptions:
+      - Featured modules section fetches from API with featured=true filter
+      - Added "For Sellers" section with 3 cards (Persona, Knowledge, Monetize)
+      - Added tech stack strip showing x402, pgvector RAG, SIWE Auth, EIP-712, USDC
+      - Responsive grid: 1 col mobile, 2 cols tablet, 3-4 cols desktop
     - Verification:
+      - `pnpm --filter web build` completes successfully
+      - Hero CTAs link to /marketplace and /seller
+      - All sections render: Hero, How-it-works (4 steps), Featured, For Sellers, Tech Stack, CTA
 
 ### T-0903 — Loading + Feedback Polish (Skeletons + Toasts + Empty States + Copy)
 - Status: TODO
