@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useAccount, useConnect, useDisconnect, useSignTypedData } from 'wagmi';
 import { getClientX402Config } from '../../../lib/x402-config';
+import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
+import { Badge } from '../../../components/ui/Badge';
+import { Input } from '../../../components/ui/Input';
+import { Skeleton } from '../../../components/ui/Skeleton';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -103,6 +108,8 @@ export default function ChatPage() {
     return `$${value.toFixed(2)}`;
   };
 
+  const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
   const buildPaymentHeader = async (requirements: any): Promise<string> => {
     if (!address) throw new Error('Wallet not connected');
 
@@ -145,7 +152,6 @@ export default function ChatPage() {
     return Buffer.from(JSON.stringify(payload)).toString('base64');
   };
 
-  // Check if session pass is valid (not expired, has credits)
   const isSessionPassValid = () => {
     if (!sessionPass) return false;
     const now = Math.floor(Date.now() / 1000);
@@ -158,7 +164,6 @@ export default function ChatPage() {
     setLoading(true);
     setError(null);
 
-    // Add user message to UI immediately
     const userMessage: Message = { role: 'user', content: messageText };
     setMessages((prev) => [...prev, userMessage]);
 
@@ -171,7 +176,6 @@ export default function ChatPage() {
         headers['X-WALLET-ADDRESS'] = address;
       }
 
-      // Use session pass if available and valid
       if (isSessionPassValid() && sessionPass) {
         headers['X-SESSION-PASS'] = sessionPass.token;
       } else if (paymentHeader) {
@@ -191,11 +195,9 @@ export default function ChatPage() {
       const data = await res.json();
 
       if (res.status === 402) {
-        // Payment required
         setPaymentRequirements(data.paymentRequirements);
         setPendingMessage(messageText);
         setShowPaymentModal(true);
-        // Remove user message since we'll retry
         setMessages((prev) => prev.slice(0, -1));
         return;
       }
@@ -204,18 +206,14 @@ export default function ChatPage() {
         throw new Error(data.error || 'Failed to send message');
       }
 
-      // Success
       if (data.chatId) setChatId(data.chatId);
       if (data.payment) setPaymentInfo(data.payment);
       if (data.upstreamPayment) setUpstreamPayment(data.upstreamPayment);
 
-      // Handle session pass in response
       if (data.sessionPass) {
         if (data.sessionPass.token) {
-          // New session pass from payment
           setSessionPass(data.sessionPass);
         } else if (data.sessionPass.creditsRemaining !== undefined) {
-          // Update existing session pass credits
           setSessionPass((prev) =>
             prev
               ? { ...prev, creditsRemaining: data.sessionPass.creditsRemaining }
@@ -233,7 +231,6 @@ export default function ChatPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
-      // Remove user message on error
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
@@ -259,234 +256,246 @@ export default function ChatPage() {
 
   if (moduleLoading) {
     return (
-      <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-        <p>Loading...</p>
-      </main>
+      <div className="container-narrow py-8">
+        <Skeleton variant="text" width={120} height={20} className="mb-4" />
+        <Skeleton variant="text" width={200} height={32} className="mb-2" />
+        <Skeleton variant="text" width={160} height={16} className="mb-8" />
+        <Skeleton variant="rounded" width="100%" height={400} />
+      </div>
     );
   }
 
   if (!module) {
     return (
-      <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-        <Link href="/marketplace" style={{ color: '#0070f3' }}>&larr; Back to Marketplace</Link>
-        <h1>Module Not Found</h1>
-      </main>
+      <div className="container-narrow py-8">
+        <Link
+          href="/marketplace"
+          className="inline-flex items-center gap-2 text-[var(--color-primary)] hover:underline mb-6"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Marketplace
+        </Link>
+        <Card variant="bordered" padding="lg" className="text-center py-12">
+          <div className="text-4xl mb-4">😕</div>
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">
+            Module Not Found
+          </h2>
+          <Link href="/marketplace">
+            <Button variant="secondary">Browse Marketplace</Button>
+          </Link>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="container-narrow py-8 min-h-[calc(100vh-12rem)] flex flex-col animate-fade-in">
       {/* Header */}
-      <div style={{ marginBottom: '1rem' }}>
-        <Link href={`/marketplace/${moduleId}`} style={{ color: '#0070f3' }}>&larr; Back to Module</Link>
-        <h1 style={{ margin: '0.5rem 0' }}>{module.name}</h1>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.875rem', color: '#666' }}>
-          <span>{formatPrice(module.priceAmount)} / {module.pricingMode === 'per_message' ? 'message' : 'session'}</span>
-          {tryMode && <span style={{ color: '#ef6c00' }}>Free Preview Mode</span>}
-          {isConnected ? (
-            <span style={{ color: 'green' }}>Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</span>
-          ) : (
-            <button onClick={() => connect({ connector: connectors[0] })} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
-              Connect Wallet
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', backgroundColor: '#f9f9f9' }}>
-        {messages.length === 0 ? (
-          <p style={{ color: '#666', textAlign: 'center' }}>Start a conversation with {module.name}</p>
-        ) : (
-          messages.map((msg, i) => (
-            <div
-              key={i}
-              style={{
-                marginBottom: '1rem',
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              }}
-            >
-              <div
-                style={{
-                  maxWidth: '70%',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '12px',
-                  backgroundColor: msg.role === 'user' ? '#0070f3' : '#fff',
-                  color: msg.role === 'user' ? '#fff' : '#333',
-                  border: msg.role === 'assistant' ? '1px solid #e0e0e0' : 'none',
-                }}
-              >
-                {msg.content}
-              </div>
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Payment Info */}
-      {paymentInfo && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#e8f5e9', borderRadius: '8px', fontSize: '0.875rem' }}>
-          <strong>Payment Confirmed</strong>
-          <div style={{ marginTop: '0.25rem', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-            TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-8)}
-            {' | '}
-            {formatPrice(paymentInfo.value || '0')}
-          </div>
-        </div>
-      )}
-
-      {/* Upstream Payment Info (for remix modules) */}
-      {upstreamPayment && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fff3e0', borderRadius: '8px', fontSize: '0.875rem' }}>
-          <strong>Upstream Payment (Remix)</strong>
-          <div style={{ marginTop: '0.25rem', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-            TX: {upstreamPayment.txHash?.slice(0, 10)}...{upstreamPayment.txHash?.slice(-8)}
-            {' | '}
-            {formatPrice(upstreamPayment.value || '0')}
-            {' | '}
-            To: {upstreamPayment.to?.slice(0, 6)}...{upstreamPayment.to?.slice(-4)}
-          </div>
-          <div style={{ marginTop: '0.25rem', fontSize: '0.7rem', color: '#666' }}>
-            This module paid the upstream module to get enhanced knowledge
-          </div>
-        </div>
-      )}
-
-      {/* Session Pass Info */}
-      {sessionPass && (
-        <div style={{
-          marginBottom: '1rem',
-          padding: '0.75rem',
-          backgroundColor: isSessionPassValid() ? '#e3f2fd' : '#fff3e0',
-          borderRadius: '8px',
-          fontSize: '0.875rem'
-        }}>
-          <strong>Session Pass</strong>
-          <div style={{ marginTop: '0.25rem', fontSize: '0.75rem' }}>
-            Credits: {sessionPass.creditsRemaining} / {sessionPass.maxCredits}
-            {' | '}
-            Expires: {new Date(sessionPass.expiresAt * 1000).toLocaleTimeString()}
-            {!isSessionPassValid() && (
-              <span style={{ color: '#ef6c00', marginLeft: '0.5rem' }}>
-                (Expired or exhausted - next message requires payment)
+      <div className="mb-4">
+        <Link
+          href={`/marketplace/${moduleId}`}
+          className="inline-flex items-center gap-2 text-[var(--color-primary)] hover:underline text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Module
+        </Link>
+        <div className="flex items-center justify-between mt-2">
+          <div>
+            <h1 className="text-xl font-bold text-[var(--color-text-primary)]">
+              {module.name}
+            </h1>
+            <div className="flex items-center gap-3 mt-1 text-sm">
+              <span className="text-[var(--color-text-secondary)]">
+                {formatPrice(module.priceAmount)} / {module.pricingMode === 'per_message' ? 'msg' : 'session'}
               </span>
+              {tryMode && (
+                <Badge variant="warning" size="sm">Free Preview</Badge>
+              )}
+            </div>
+          </div>
+          <div>
+            {isConnected ? (
+              <Badge variant="success" size="sm">
+                {formatAddress(address!)}
+              </Badge>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => connect({ connector: connectors[0] })}
+              >
+                Connect Wallet
+              </Button>
             )}
           </div>
         </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '8px', fontSize: '0.875rem' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Input */}
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !loading && sendMessage(input)}
-          placeholder="Type your message..."
-          disabled={loading}
-          style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem' }}
-        />
-        <button
-          onClick={() => sendMessage(input)}
-          disabled={loading || !input.trim()}
-          style={{
-            padding: '0.75rem 1.5rem',
-            backgroundColor: loading || !input.trim() ? '#ccc' : '#0070f3',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? 'Sending...' : 'Send'}
-        </button>
       </div>
+
+      {/* Messages Area */}
+      <Card variant="bordered" padding="none" className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 bg-[var(--color-background-secondary)]">
+          {messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-[var(--color-text-tertiary)]">
+              Start a conversation with {module.name}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`
+                      max-w-[70%] px-4 py-3 rounded-[var(--radius-lg)]
+                      ${msg.role === 'user'
+                        ? 'bg-[var(--color-primary)] text-white'
+                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)]'
+                      }
+                    `}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Info Banners */}
+        <div className="border-t border-[var(--color-border)]">
+          {paymentInfo && (
+            <div className="px-4 py-2 bg-[var(--color-success-light)] text-sm flex items-center gap-2">
+              <svg className="w-4 h-4 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-[var(--color-success)] font-medium">Payment Confirmed</span>
+              <span className="text-[var(--color-text-secondary)] font-mono text-xs ml-2">
+                TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-6)} | {formatPrice(paymentInfo.value || '0')}
+              </span>
+            </div>
+          )}
+
+          {upstreamPayment && (
+            <div className="px-4 py-2 bg-[var(--color-warning-light)] text-sm flex items-center gap-2">
+              <svg className="w-4 h-4 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span className="text-[var(--color-warning)] font-medium">Upstream Payment (Remix)</span>
+              <span className="text-[var(--color-text-secondary)] font-mono text-xs ml-2">
+                TX: {upstreamPayment.txHash?.slice(0, 10)}... | {formatPrice(upstreamPayment.value || '0')} → {formatAddress(upstreamPayment.to || '')}
+              </span>
+            </div>
+          )}
+
+          {sessionPass && (
+            <div className={`px-4 py-2 text-sm flex items-center gap-2 ${
+              isSessionPassValid() ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--color-warning-light)]'
+            }`}>
+              <span className="font-medium text-[var(--color-text-primary)]">Session Pass</span>
+              <Badge variant={isSessionPassValid() ? 'primary' : 'warning'} size="sm">
+                {sessionPass.creditsRemaining}/{sessionPass.maxCredits} credits
+              </Badge>
+              <span className="text-[var(--color-text-tertiary)] text-xs">
+                Expires: {new Date(sessionPass.expiresAt * 1000).toLocaleTimeString()}
+              </span>
+              {!isSessionPassValid() && (
+                <span className="text-[var(--color-warning)] text-xs">(Payment required)</span>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div className="px-4 py-2 bg-[var(--color-error-light)] text-sm text-[var(--color-error)]">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="flex gap-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !loading && sendMessage(input)}
+              placeholder="Type your message..."
+              disabled={loading}
+              fullWidth
+            />
+            <Button
+              onClick={() => sendMessage(input)}
+              disabled={loading || !input.trim()}
+              isLoading={loading}
+            >
+              Send
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       {/* Payment Modal */}
       {showPaymentModal && paymentRequirements && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}>
-          <div style={{
-            backgroundColor: '#fff',
-            padding: '2rem',
-            borderRadius: '12px',
-            maxWidth: '400px',
-            width: '90%',
-          }}>
-            <h2 style={{ margin: '0 0 1rem' }}>Payment Required</h2>
-            <p style={{ color: '#666', marginBottom: '1rem' }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card variant="elevated" padding="lg" className="max-w-md w-full animate-slide-up">
+            <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-2">
+              Payment Required
+            </h2>
+            <p className="text-[var(--color-text-secondary)] mb-4">
               {paymentRequirements.description}
             </p>
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0070f3' }}>
+            <div className="p-4 bg-[var(--color-background-secondary)] rounded-[var(--radius-md)] mb-4">
+              <div className="text-2xl font-bold text-[var(--color-primary)]">
                 {formatPrice(paymentRequirements.maxAmountRequired)}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
+              <div className="text-xs text-[var(--color-text-tertiary)] mt-1">
                 Network: {paymentRequirements.network}
               </div>
             </div>
             {!isConnected ? (
               <div>
-                <p style={{ color: '#666', marginBottom: '0.5rem' }}>Connect wallet to pay:</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <p className="text-sm text-[var(--color-text-secondary)] mb-3">
+                  Connect your wallet to pay:
+                </p>
+                <div className="space-y-2">
                   {connectors.map((connector) => (
-                    <button
+                    <Button
                       key={connector.uid}
+                      variant="secondary"
+                      fullWidth
                       onClick={() => connect({ connector })}
-                      style={{ padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
                     >
                       {connector.name}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  fullWidth
                   onClick={() => setShowPaymentModal(false)}
-                  style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  fullWidth
                   onClick={handlePay}
-                  disabled={loading}
-                  style={{
-                    flex: 2,
-                    padding: '0.75rem',
-                    backgroundColor: '#0070f3',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                  }}
+                  isLoading={loading}
                 >
-                  {loading ? 'Processing...' : 'Pay & Send'}
-                </button>
+                  Pay & Send
+                </Button>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
-    </main>
+    </div>
   );
 }

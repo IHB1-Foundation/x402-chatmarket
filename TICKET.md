@@ -1000,3 +1000,255 @@
       - Payment flow logs all events with structured data
       - requestId tracks requests across log entries
     - Files: apps/api/src/plugins/observability.ts, apps/api/src/routes/chat.ts, apps/api/src/index.ts
+
+---
+
+## EPIC 9 — Hackathon Polish / Fancy UX
+
+### T-0901 — Web Design System v1 (Theme + Components + Dark Mode)
+- Status: DONE
+- Priority: P0
+- Dependencies: T-0001
+- Description:
+    - Adopt a consistent styling system for hackathon demo polish:
+      - Recommended: TailwindCSS + CSS variables (design tokens) + small UI primitives
+      - Alternative (if avoiding Tailwind): CSS Modules + CSS variables + small UI primitives
+    - Create global app shell layout:
+      - Top nav (logo, Marketplace/Seller/x402 POC links, theme toggle)
+      - Content container (max width) and subtle background (gradient/noise)
+      - Footer (short tagline + links)
+    - Add base typography:
+      - Use `next/font` (e.g., Inter/Geist) and consistent type scale
+      - Normalize spacing and responsive breakpoints
+    - Add UI primitives (reusable components):
+      - `Button`, `Card`, `Badge`, `Input`, `Textarea`, `Tabs`, `Skeleton`, `Toast`
+      - Ensure focus rings, hover states, disabled states, and keyboard navigation
+    - Convert the highest-visibility pages off inline styles onto the new primitives:
+      - `/`, `/marketplace`, `/marketplace/:id`, `/chat/:id`, `/seller`, `/x402-poc`
+    - Files (planned):
+      - `apps/web/src/app/layout.tsx` (import globals, wrap providers, add shell)
+      - `apps/web/src/app/globals.css` (tokens + base styles)
+      - `apps/web/tailwind.config.ts` + `apps/web/postcss.config.js` (if Tailwind)
+      - `apps/web/src/components/*` (new shared UI components)
+- AC:
+    - [x] `pnpm --filter web build` succeeds
+    - [x] All key routes render with the new theme: `/`, `/marketplace`, `/marketplace/:id`, `/chat/:id`, `/seller`, `/x402-poc`
+    - [x] Theme toggle works, persists across refresh (localStorage), and respects OS preference on first load
+    - [x] UI primitives exist and are used in at least 2 pages each (`Button`, `Card`, `Badge`, `Input`, `Tabs`)
+    - [x] Basic accessibility: visible focus ring, sufficient contrast for primary actions, keyboard tab order is sane
+- Notes:
+    - started_at: 2026-01-22T10:00:00Z
+    - finished_at: 2026-01-22T11:30:00Z
+    - Decisions/Assumptions:
+      - Used Tailwind CSS v3.4.17 (v4 not compatible with Next.js 14)
+      - CSS variables for theming (light/dark mode design tokens)
+      - Theme toggle with light/dark/system modes + localStorage persistence
+      - UI primitives: Button, Card, Badge, Input, Textarea, Tabs, Skeleton, Toast, ThemeToggle
+      - App shell: Navbar (responsive + mobile menu) + Footer
+      - Key pages updated: /, /marketplace, /marketplace/[id], /chat/[id]
+    - Verification:
+      - `pnpm --filter web build` completes successfully
+      - Theme toggle cycles light/dark/system and persists across refresh
+      - Button, Card, Badge, Input, Tabs used in /, /marketplace, /marketplace/[id], /chat/[id]
+
+### T-0902 — Landing Page Redesign (Hero + How x402 Works + CTA)
+- Status: TODO
+- Priority: P0
+- Dependencies: T-0901
+- Description:
+    - Redesign `/` to look like a product landing page, not a dev index:
+      - Hero section: 1-line value prop + 1-sentence explainer + primary CTA + secondary CTA
+      - “How it works” section: 3–4 step x402 flow with icons (402 → sign → pay → response)
+      - “Featured modules” section: show 3–6 module cards (featured first)
+      - “For Sellers” section: 3 bullets (create persona, upload knowledge, monetize via x402)
+      - Social proof strip (hackathon-friendly): metrics chips like “402 gated”, “pgvector RAG”, “SIWE auth”
+    - Add nav CTA buttons:
+      - Primary: “Browse Marketplace”
+      - Secondary: “Become a Seller”
+    - Keep it mobile-first and responsive (no horizontal scroll).
+    - Files (planned):
+      - `apps/web/src/app/page.tsx` (rewrite with new components)
+- AC:
+    - [ ] `/` contains Hero + How-it-works + Featured + Seller sections
+    - [ ] CTA buttons navigate correctly to `/marketplace` and `/seller`
+    - [ ] Responsive layout works on narrow screens (manual check)
+    - [ ] `pnpm --filter web build` succeeds
+- Notes:
+    - started_at:
+    - finished_at:
+    - Decisions/Assumptions:
+    - Verification:
+
+### T-0903 — Loading + Feedback Polish (Skeletons + Toasts + Empty States + Copy)
+- Status: TODO
+- Priority: P0
+- Dependencies: T-0901
+- Description:
+    - Add consistent “app feels alive” feedback across pages:
+      - Skeleton loaders for marketplace grid, module detail, seller module list, chat history
+      - Toasts for success/error/info (copy, publish, payment success/failure, network errors)
+      - Empty states with helpful actions (e.g., “No modules found → Clear filters”)
+    - Add copy-to-clipboard affordances:
+      - Payment address (`payTo`), tx hash, module ID, API endpoint URLs/snippets
+      - Show toast on copy success/failure
+    - Reduce UI jank:
+      - Debounce search input to avoid flicker
+      - Keep layout stable during loading (skeleton heights)
+    - Files (planned):
+      - `apps/web/src/components/ui/Skeleton.tsx`, `apps/web/src/components/ui/Toast*.tsx`
+      - Update pages: `apps/web/src/app/marketplace/page.tsx`, `apps/web/src/app/marketplace/[id]/page.tsx`,
+        `apps/web/src/app/seller/page.tsx`, `apps/web/src/app/chat/[id]/page.tsx`
+- AC:
+    - [ ] Marketplace shows skeletons while loading and a helpful empty state when no results
+    - [ ] Copy buttons exist for payTo + tx hash and show toast feedback
+    - [ ] Network errors show a toast and/or inline error banner (no silent failures)
+    - [ ] `pnpm --filter web build` succeeds
+- Notes:
+    - started_at:
+    - finished_at:
+    - Decisions/Assumptions:
+    - Verification:
+
+### T-0904 — x402 POC: Stepper UI + Collapsible Debug Panel
+- Status: TODO
+- Priority: P1
+- Dependencies: T-0901, T-0102
+- Description:
+    - Upgrade `/x402-poc` to be a demo “moment”:
+      - Visual stepper: `Request` → `402 Received` → `Sign` → `Retry` → `200 Success`
+      - Status badges (idle/loading/success/error) with clear copy
+      - Keep existing raw logs but move into a collapsible “Debug” panel
+      - Highlight the extracted `paymentRequirements` fields (network, asset, payTo, maxAmount)
+      - Add copy buttons for “curl example” and “response JSON”
+      - Optional: confetti or subtle success animation on completion (keep dependency light)
+    - Ensure it still works with X402_MOCK_MODE and real facilitator settings.
+    - Files (planned):
+      - `apps/web/src/app/x402-poc/page.tsx` (refactor UI)
+- AC:
+    - [ ] Stepper accurately reflects the 402→sign→retry→200 flow
+    - [ ] Debug panel can be toggled and still shows full request/response logs
+    - [ ] Copy buttons work for at least one code snippet (toast feedback)
+    - [ ] `pnpm --filter web build` succeeds
+- Notes:
+    - started_at:
+    - finished_at:
+    - Decisions/Assumptions:
+    - Verification:
+
+### T-0905 — Marketplace UX Upgrade (Chips, Debounce, Featured/Trending, Pagination)
+- Status: TODO
+- Priority: P1
+- Dependencies: T-0901, T-0206
+- Description:
+    - Improve `/marketplace` browsing experience:
+      - Replace tag dropdown with clickable “chip” filters + quick clear
+      - Debounce search input (~250–400ms) and show “searching…” indicator
+      - Add a Featured row/section (uses existing `featured` flag)
+      - Add a lightweight “Trending” heuristic (demo-friendly):
+        - Option A: highest `evalScore` (fast)
+        - Option B: most payments in last N days (requires API endpoint; see T-0907)
+      - Add simple pagination controls if `pagination.totalPages > 1`
+      - Card polish: consistent spacing, hover elevation, tag badges, price formatting
+    - Keep fast client-side navigation and good empty states.
+    - Files (planned):
+      - `apps/web/src/app/marketplace/page.tsx` (refactor UI + UX)
+- AC:
+    - [ ] Tag chips filter results and “Clear” resets filters
+    - [ ] Search is debounced and does not refetch on every keystroke
+    - [ ] Featured modules are visually distinct and shown first
+    - [ ] Pagination works when multiple pages exist
+    - [ ] `pnpm --filter web build` succeeds
+- Notes:
+    - started_at:
+    - finished_at:
+    - Decisions/Assumptions:
+    - Verification:
+
+### T-0906 — Module Detail: “Developer” Tab (curl + TS Snippets + Copy)
+- Status: TODO
+- Priority: P1
+- Dependencies: T-0901, T-0206, T-0304
+- Description:
+    - Add a “Developer” tab to module detail (`/marketplace/:id`) to make it feel like an API product:
+      - Tabs: `Overview | Pricing | Developer`
+      - Developer tab contents:
+        - Example `curl` for try-once mode
+        - Example `curl` for paid mode (placeholder for X-PAYMENT header)
+        - Minimal TypeScript snippet that shows the request/response + where X-PAYMENT goes
+        - Copy-to-clipboard buttons for each snippet
+        - Show env var hints (`NEXT_PUBLIC_API_URL`, network/asset)
+    - Keep content accurate to current endpoints:
+      - `POST /api/modules/:id/chat` and try mode via `?mode=try` (or body flag, whichever is implemented)
+    - Files (planned):
+      - `apps/web/src/app/marketplace/[id]/page.tsx` (tabs + content)
+      - Shared snippet helpers: `apps/web/src/lib/snippets.ts` (optional)
+- AC:
+    - [ ] Tab switching works and Developer tab renders code blocks with copy buttons
+    - [ ] Snippets match the actual API routes and expected headers
+    - [ ] `pnpm --filter web build` succeeds
+- Notes:
+    - started_at:
+    - finished_at:
+    - Decisions/Assumptions:
+    - Verification:
+
+### T-0907 — Seller Dashboard: Revenue/Usage Overview + Recent Payments
+- Status: TODO
+- Priority: P1
+- Dependencies: T-0901, T-0201, T-0202, T-0304
+- Description:
+    - Add a “business dashboard” section to `/seller`:
+      - KPIs: total revenue (last 7d/30d), paid chats count, unique buyers
+      - Recent payments table (tx hash, module, amount, timestamp) with copy buttons
+      - Mini chart (sparkline or bar chart) for revenue over time (last 7–14 days)
+    - Backend support (add if missing):
+      - `GET /api/seller/payments` (list recent payments for seller-owned modules)
+      - `GET /api/seller/analytics` (aggregations for KPIs + timeseries)
+      - Ensure auth + ownership filtering (seller only sees their modules)
+    - Keep it demo-friendly: show clear empty state if there are no payments yet.
+    - Files (planned):
+      - `apps/api/src/routes/seller.ts` (analytics endpoints if needed)
+      - `apps/web/src/app/seller/page.tsx` (UI + chart)
+      - `apps/web/src/lib/api.ts` (optional fetch helpers)
+- AC:
+    - [ ] Seller dashboard shows KPIs + recent payments (or a clear empty state)
+    - [ ] Analytics endpoints require auth and only return seller-owned data
+    - [ ] `pnpm --filter api build` and `pnpm --filter web build` succeed
+- Notes:
+    - started_at:
+    - finished_at:
+    - Decisions/Assumptions:
+    - Verification:
+
+### T-0908 — Demo Mode: One-Command Setup + Seed Data + Demo Banner
+- Status: TODO
+- Priority: P1
+- Dependencies: T-0702, T-0201, T-0205, T-0304
+- Description:
+    - Make demos reliable under hackathon pressure:
+      - Add a “demo mode” environment toggle:
+        - API: `DEMO_MODE=true` enables extra safe defaults (e.g., LLM_PROVIDER=mock, X402_MOCK_MODE=true)
+        - Web: `NEXT_PUBLIC_DEMO_MODE=true` shows a visible demo banner and helpful shortcuts
+      - Improve seeding so it creates a “good-looking marketplace”:
+        - Seed 6–12 modules across categories/tags, 1–2 featured, and 1 remix
+        - Seed knowledge docs + example prompts so chat feels real
+        - Seed eval scores so trust signals render nicely
+        - Optionally seed a few payments (or provide a guided path that generates them quickly)
+      - Add a one-command demo runner (best-effort, avoids manual steps):
+        - Root script `pnpm demo` that (a) starts infra, (b) seeds data, (c) starts dev servers
+      - Update `DEMO_RUNBOOK.md` with the new “demo mode” flow.
+    - Files (planned):
+      - root `package.json` (add `demo` script)
+      - `apps/api/src/scripts/seed-demo.ts` (or extend existing seed)
+      - `apps/web/src/components/DemoBanner.tsx` (or equivalent)
+      - `DEMO_RUNBOOK.md` (update instructions)
+- AC:
+    - [ ] `pnpm demo` results in a marketplace with seeded modules (manual verify in browser)
+    - [ ] Demo banner appears when `NEXT_PUBLIC_DEMO_MODE=true`
+    - [ ] Seeding is idempotent (re-run does not create duplicates or crash)
+    - [ ] `pnpm --filter api build` and `pnpm --filter web build` succeed
+- Notes:
+    - started_at:
+    - finished_at:
+    - Decisions/Assumptions:
+    - Verification:

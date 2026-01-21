@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Card, CardContent, CardFooter } from '../../components/ui/Card';
+import { Badge } from '../../components/ui/Badge';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { SkeletonGrid } from '../../components/ui/Skeleton';
 
 interface Module {
   id: string;
@@ -13,6 +18,7 @@ interface Module {
   priceAmount: string;
   network: string;
   evalScore: number | null;
+  featured: boolean;
   createdAt: string;
 }
 
@@ -72,160 +78,207 @@ export default function MarketplacePage() {
   }, [searchQuery, selectedTag, sortBy]);
 
   const formatPrice = (amount: string, mode: string) => {
-    const value = parseInt(amount, 10) / 1e6; // Assuming 6 decimals
-    return `$${value.toFixed(2)} / ${mode === 'per_message' ? 'message' : 'session'}`;
+    const value = parseInt(amount, 10) / 1e6;
+    return `$${value.toFixed(2)} / ${mode === 'per_message' ? 'msg' : 'session'}`;
   };
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ margin: 0 }}>SoulForge Marketplace</h1>
-          <p style={{ margin: '0.5rem 0 0', color: '#666' }}>Discover AI personas and knowledge modules</p>
-        </div>
-        <Link href="/" style={{ color: '#0070f3' }}>Home</Link>
+    <div className="container-app py-8 animate-fade-in">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-[var(--color-text-primary)] mb-2">
+          Marketplace
+        </h1>
+        <p className="text-[var(--color-text-secondary)]">
+          Discover AI personas and knowledge modules
+        </p>
       </div>
 
       {/* Search and Filters */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          placeholder="Search modules..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            padding: '0.5rem 1rem',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            flex: '1',
-            minWidth: '200px',
-          }}
-        />
-        <select
-          value={selectedTag}
-          onChange={(e) => setSelectedTag(e.target.value)}
-          style={{ padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-        >
-          <option value="">All Tags</option>
-          {tags.map((t) => (
-            <option key={t.tag} value={t.tag}>
-              {t.tag} ({t.count})
-            </option>
-          ))}
-        </select>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          style={{ padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-        >
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="price_asc">Price: Low to High</option>
-          <option value="price_desc">Price: High to Low</option>
-          <option value="eval_score">Highest Rated</option>
-        </select>
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <div className="flex-1">
+          <Input
+            placeholder="Search modules..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftAddon={
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            }
+            fullWidth
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={selectedTag}
+            onChange={(e) => setSelectedTag(e.target.value)}
+            className="px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] text-sm"
+          >
+            <option value="">All Tags</option>
+            {tags.map((t) => (
+              <option key={t.tag} value={t.tag}>
+                {t.tag} ({t.count})
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] text-sm"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="eval_score">Highest Rated</option>
+          </select>
+        </div>
       </div>
 
-      {/* Results */}
-      {loading && <p>Loading modules...</p>}
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-
-      {!loading && !error && modules.length === 0 && (
-        <p style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
-          No modules found. Try adjusting your search.
-        </p>
+      {/* Tag Chips */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => setSelectedTag('')}
+            className={`
+              px-3 py-1 text-sm rounded-[var(--radius-full)] transition-colors
+              ${!selectedTag
+                ? 'bg-[var(--color-primary)] text-white'
+                : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+              }
+            `}
+          >
+            All
+          </button>
+          {tags.slice(0, 8).map((t) => (
+            <button
+              key={t.tag}
+              onClick={() => setSelectedTag(selectedTag === t.tag ? '' : t.tag)}
+              className={`
+                px-3 py-1 text-sm rounded-[var(--radius-full)] transition-colors
+                ${selectedTag === t.tag
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+                }
+              `}
+            >
+              {t.tag}
+            </button>
+          ))}
+        </div>
       )}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: '1.5rem',
-        }}
-      >
-        {modules.map((module) => (
-          <Link
-            key={module.id}
-            href={`/marketplace/${module.id}`}
-            style={{ textDecoration: 'none', color: 'inherit' }}
+      {/* Loading State */}
+      {loading && <SkeletonGrid count={6} />}
+
+      {/* Error State */}
+      {error && (
+        <Card variant="bordered" padding="lg" className="text-center">
+          <div className="text-[var(--color-error)] mb-2">Failed to load modules</div>
+          <p className="text-[var(--color-text-secondary)] text-sm">{error}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-4"
+            onClick={() => window.location.reload()}
           >
-            <div
-              style={{
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                padding: '1.5rem',
-                backgroundColor: '#fff',
-                transition: 'box-shadow 0.2s',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)')}
-              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <h3 style={{ margin: '0 0 0.5rem' }}>{module.name}</h3>
-                {module.evalScore !== null && (
-                  <span
-                    style={{
-                      backgroundColor: '#e8f5e9',
-                      color: '#2e7d32',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    {module.evalScore}/10
-                  </span>
+            Try Again
+          </Button>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && modules.length === 0 && (
+        <Card variant="bordered" padding="lg" className="text-center py-12">
+          <div className="text-4xl mb-4">🔍</div>
+          <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
+            No modules found
+          </h3>
+          <p className="text-[var(--color-text-secondary)] mb-4">
+            Try adjusting your search or filters
+          </p>
+          <Button variant="secondary" onClick={() => { setSearchQuery(''); setSelectedTag(''); }}>
+            Clear Filters
+          </Button>
+        </Card>
+      )}
+
+      {/* Module Grid */}
+      {!loading && !error && modules.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {modules.map((module) => (
+            <Link key={module.id} href={`/marketplace/${module.id}`}>
+              <Card
+                hoverable
+                padding="none"
+                className={`
+                  h-full overflow-hidden
+                  ${module.featured ? 'ring-2 ring-[var(--color-primary)]' : ''}
+                `}
+              >
+                {module.featured && (
+                  <div className="bg-[var(--color-primary)] text-white text-xs font-medium px-3 py-1 text-center">
+                    Featured
+                  </div>
                 )}
-              </div>
-              <p style={{ margin: '0 0 1rem', color: '#666', fontSize: '0.9rem', lineHeight: '1.4' }}>
-                {module.description.length > 120
-                  ? `${module.description.slice(0, 120)}...`
-                  : module.description || 'No description'}
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                {module.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    style={{
-                      backgroundColor: '#f0f0f0',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 'bold', color: '#0070f3' }}>
-                  {formatPrice(module.priceAmount, module.pricingMode)}
-                </span>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#999',
-                    backgroundColor: module.type === 'remix' ? '#fff3e0' : '#e3f2fd',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '4px',
-                  }}
-                >
-                  {module.type}
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <h3 className="font-semibold text-[var(--color-text-primary)] line-clamp-1">
+                      {module.name}
+                    </h3>
+                    {module.evalScore !== null && (
+                      <Badge
+                        variant={module.evalScore >= 7 ? 'success' : module.evalScore >= 4 ? 'warning' : 'error'}
+                        size="sm"
+                      >
+                        {module.evalScore}/10
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-[var(--color-text-secondary)] mb-4 line-clamp-2 min-h-[2.5rem]">
+                    {module.description || 'No description'}
+                  </p>
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {module.tags.slice(0, 3).map((tag) => (
+                      <Badge key={tag} variant="outline" size="sm">
+                        {tag}
+                      </Badge>
+                    ))}
+                    {module.tags.length > 3 && (
+                      <Badge variant="outline" size="sm">
+                        +{module.tags.length - 3}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]">
+                    <span className="font-semibold text-[var(--color-primary)]">
+                      {formatPrice(module.priceAmount, module.pricingMode)}
+                    </span>
+                    <Badge
+                      variant={module.type === 'remix' ? 'warning' : 'primary'}
+                      size="sm"
+                    >
+                      {module.type}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem' }}>
+        <div className="flex items-center justify-center gap-4 mt-8 text-sm text-[var(--color-text-secondary)]">
           <span>
-            Page {pagination.page} of {pagination.totalPages} ({pagination.total} modules)
+            Page {pagination.page} of {pagination.totalPages}
           </span>
+          <span>•</span>
+          <span>{pagination.total} modules</span>
         </div>
       )}
-    </main>
+    </div>
   );
 }
