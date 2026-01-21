@@ -1161,7 +1161,7 @@
       - Copy buttons trigger toast feedback
 
 ### T-0905 — Marketplace UX Upgrade (Chips, Debounce, Featured/Trending, Pagination)
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0901, T-0206
 - Description:
@@ -1178,16 +1178,27 @@
     - Files (planned):
       - `apps/web/src/app/marketplace/page.tsx` (refactor UI + UX)
 - AC:
-    - [ ] Tag chips filter results and “Clear” resets filters
-    - [ ] Search is debounced and does not refetch on every keystroke
-    - [ ] Featured modules are visually distinct and shown first
-    - [ ] Pagination works when multiple pages exist
-    - [ ] `pnpm --filter web build` succeeds
+    - [x] Tag chips filter results and "Clear" resets filters
+    - [x] Search is debounced and does not refetch on every keystroke
+    - [x] Featured modules are visually distinct and shown first
+    - [x] Pagination works when multiple pages exist
+    - [x] `pnpm --filter web build` succeeds
 - Notes:
-    - started_at:
-    - finished_at:
+    - started_at: 2026-01-22T12:50:00Z
+    - finished_at: 2026-01-22T13:15:00Z
     - Decisions/Assumptions:
+      - Added useDebounce hook with 300ms delay for search input
+      - Search shows loading spinner while debouncing, clear button when has value
+      - Tag chips show count and toggle selection on click
+      - Featured modules shown in separate section at top when no filters applied
+      - Pagination controls: Previous/Next buttons + numbered page buttons (max 5 visible)
+      - Results count shows "Showing X-Y of Z modules"
+      - Extracted ModuleCard as separate component for reusability
     - Verification:
+      - `pnpm --filter web build` completes successfully
+      - Search input debounces requests (300ms delay)
+      - Tag chips toggle and "Clear" button resets all filters
+      - Pagination controls navigate between pages
 
 ### T-0906 — Module Detail: “Developer” Tab (curl + TS Snippets + Copy)
 - Status: TODO
