@@ -1200,8 +1200,8 @@
       - Tag chips toggle and "Clear" button resets all filters
       - Pagination controls navigate between pages
 
-### T-0906 — Module Detail: “Developer” Tab (curl + TS Snippets + Copy)
-- Status: TODO
+### T-0906 — Module Detail: "Developer" Tab (curl + TS Snippets + Copy)
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0901, T-0206, T-0304
 - Description:
@@ -1219,14 +1219,22 @@
       - `apps/web/src/app/marketplace/[id]/page.tsx` (tabs + content)
       - Shared snippet helpers: `apps/web/src/lib/snippets.ts` (optional)
 - AC:
-    - [ ] Tab switching works and Developer tab renders code blocks with copy buttons
-    - [ ] Snippets match the actual API routes and expected headers
-    - [ ] `pnpm --filter web build` succeeds
+    - [x] Tab switching works and Developer tab renders code blocks with copy buttons
+    - [x] Snippets match the actual API routes and expected headers
+    - [x] `pnpm --filter web build` succeeds
 - Notes:
-    - started_at:
-    - finished_at:
+    - started_at: 2026-01-22T10:00:00Z (completed as part of T-0901/T-0903)
+    - finished_at: 2026-01-22T12:15:00Z
     - Decisions/Assumptions:
+      - Implemented as part of T-0901 (design system) and T-0903 (copy buttons)
+      - Tabs component: Overview | Pricing | Developer
+      - Developer tab shows curl examples for try-once and paid modes
+      - Copy buttons for curl commands, asset contract, payTo address
+      - Payment requirements section shows network/asset/payTo/amount
     - Verification:
+      - Tab switching works with Tabs component
+      - Developer tab has curl snippets matching API routes
+      - `pnpm --filter web build` succeeds
 
 ### T-0907 — Seller Dashboard: Revenue/Usage Overview + Recent Payments
 - Status: TODO
