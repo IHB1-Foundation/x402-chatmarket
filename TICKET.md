@@ -1125,7 +1125,7 @@
       - Network errors display both inline banner and toast notification
 
 ### T-0904 — x402 POC: Stepper UI + Collapsible Debug Panel
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0901, T-0102
 - Description:
@@ -1140,15 +1140,25 @@
     - Files (planned):
       - `apps/web/src/app/x402-poc/page.tsx` (refactor UI)
 - AC:
-    - [ ] Stepper accurately reflects the 402→sign→retry→200 flow
-    - [ ] Debug panel can be toggled and still shows full request/response logs
-    - [ ] Copy buttons work for at least one code snippet (toast feedback)
-    - [ ] `pnpm --filter web build` succeeds
+    - [x] Stepper accurately reflects the 402→sign→retry→200 flow
+    - [x] Debug panel can be toggled and still shows full request/response logs
+    - [x] Copy buttons work for at least one code snippet (toast feedback)
+    - [x] `pnpm --filter web build` succeeds
 - Notes:
-    - started_at:
-    - finished_at:
+    - started_at: 2026-01-22T12:20:00Z
+    - finished_at: 2026-01-22T12:45:00Z
     - Decisions/Assumptions:
+      - Visual 5-step stepper: Request → 402 Received → Sign → Retry → Success
+      - Stepper shows completed/active/upcoming/error states with colors and animations
+      - Payment requirements card appears after 402, showing amount/network/asset/payTo
+      - Collapsible debug panel with toggle button showing log count
+      - Copy buttons for curl command, response JSON, asset address, payTo address
+      - Toast notifications for success/error states
     - Verification:
+      - `pnpm --filter web build` completes successfully
+      - Stepper reflects each stage during flow execution
+      - Debug panel toggles open/closed, preserves all logs
+      - Copy buttons trigger toast feedback
 
 ### T-0905 — Marketplace UX Upgrade (Chips, Debounce, Featured/Trending, Pagination)
 - Status: TODO
