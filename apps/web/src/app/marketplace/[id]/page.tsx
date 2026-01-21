@@ -8,6 +8,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton, SkeletonText } from '../../../components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/Tabs';
+import { CopyButton } from '../../../components/ui/CopyButton';
 
 interface ModuleDetail {
   id: string;
@@ -275,9 +276,16 @@ export default function ModuleDetailPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-[var(--color-text-tertiary)] mb-1 block">
-                  Try Once (Free Preview)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm text-[var(--color-text-tertiary)]">
+                    Try Once (Free Preview)
+                  </label>
+                  <CopyButton
+                    text={`curl -X POST ${API_URL}/api/modules/${module.id}/chat -H "Content-Type: application/json" -d '{"message": "Hello", "mode": "try"}'`}
+                    label="curl command"
+                    showText
+                  />
+                </div>
                 <pre className="p-3 bg-[var(--color-background-secondary)] rounded-[var(--radius-md)] text-xs overflow-x-auto font-mono">
 {`curl -X POST ${API_URL}/api/modules/${module.id}/chat \\
   -H "Content-Type: application/json" \\
@@ -285,9 +293,16 @@ export default function ModuleDetailPage() {
                 </pre>
               </div>
               <div>
-                <label className="text-sm text-[var(--color-text-tertiary)] mb-1 block">
-                  Paid Request (with X-PAYMENT header)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm text-[var(--color-text-tertiary)]">
+                    Paid Request (with X-PAYMENT header)
+                  </label>
+                  <CopyButton
+                    text={`curl -X POST ${API_URL}/api/modules/${module.id}/chat -H "Content-Type: application/json" -H "X-PAYMENT: <base64-encoded-payment>" -d '{"message": "Hello"}'`}
+                    label="curl command"
+                    showText
+                  />
+                </div>
                 <pre className="p-3 bg-[var(--color-background-secondary)] rounded-[var(--radius-md)] text-xs overflow-x-auto font-mono">
 {`curl -X POST ${API_URL}/api/modules/${module.id}/chat \\
   -H "Content-Type: application/json" \\
@@ -299,20 +314,26 @@ export default function ModuleDetailPage() {
                 <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
                   Payment Requirements
                 </h4>
-                <dl className="text-xs space-y-1">
-                  <div className="flex gap-2">
+                <dl className="text-xs space-y-2">
+                  <div className="flex items-center gap-2">
                     <dt className="text-[var(--color-text-tertiary)]">Network:</dt>
                     <dd className="font-mono">{module.network}</dd>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <dt className="text-[var(--color-text-tertiary)]">Asset:</dt>
-                    <dd className="font-mono">{module.assetContract}</dd>
+                    <dd className="font-mono flex items-center gap-1">
+                      {module.assetContract.slice(0, 10)}...{module.assetContract.slice(-8)}
+                      <CopyButton text={module.assetContract} label="asset contract" />
+                    </dd>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <dt className="text-[var(--color-text-tertiary)]">Pay To:</dt>
-                    <dd className="font-mono">{module.payTo}</dd>
+                    <dd className="font-mono flex items-center gap-1">
+                      {module.payTo.slice(0, 10)}...{module.payTo.slice(-8)}
+                      <CopyButton text={module.payTo} label="pay to address" />
+                    </dd>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <dt className="text-[var(--color-text-tertiary)]">Amount:</dt>
                     <dd className="font-mono">{module.priceAmount} (smallest units)</dd>
                   </div>

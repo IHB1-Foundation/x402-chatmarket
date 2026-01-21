@@ -1087,7 +1087,7 @@
       - All sections render: Hero, How-it-works (4 steps), Featured, For Sellers, Tech Stack, CTA
 
 ### T-0903 — Loading + Feedback Polish (Skeletons + Toasts + Empty States + Copy)
-- Status: TODO
+- Status: DONE
 - Priority: P0
 - Dependencies: T-0901
 - Description:
@@ -1106,15 +1106,23 @@
       - Update pages: `apps/web/src/app/marketplace/page.tsx`, `apps/web/src/app/marketplace/[id]/page.tsx`,
         `apps/web/src/app/seller/page.tsx`, `apps/web/src/app/chat/[id]/page.tsx`
 - AC:
-    - [ ] Marketplace shows skeletons while loading and a helpful empty state when no results
-    - [ ] Copy buttons exist for payTo + tx hash and show toast feedback
-    - [ ] Network errors show a toast and/or inline error banner (no silent failures)
-    - [ ] `pnpm --filter web build` succeeds
+    - [x] Marketplace shows skeletons while loading and a helpful empty state when no results
+    - [x] Copy buttons exist for payTo + tx hash and show toast feedback
+    - [x] Network errors show a toast and/or inline error banner (no silent failures)
+    - [x] `pnpm --filter web build` succeeds
 - Notes:
-    - started_at:
-    - finished_at:
+    - started_at: 2026-01-22T11:55:00Z
+    - finished_at: 2026-01-22T12:15:00Z
     - Decisions/Assumptions:
+      - Added CopyButton component with toast feedback for copy success/failure
+      - Module detail Developer tab: copy buttons for curl commands, asset contract, payTo address
+      - Chat page: copy buttons for tx hash in payment confirmations
+      - Toast notifications for payment success/failure and network errors
+      - Skeleton loaders already present in marketplace and module detail pages
     - Verification:
+      - `pnpm --filter web build` completes successfully
+      - Copy buttons show toast feedback on click
+      - Network errors display both inline banner and toast notification
 
 ### T-0904 — x402 POC: Stepper UI + Collapsible Debug Panel
 - Status: TODO

@@ -10,6 +10,8 @@ import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Input } from '../../../components/ui/Input';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { CopyButton } from '../../../components/ui/CopyButton';
+import { useToast } from '../../../components/ui/Toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -64,6 +66,7 @@ export default function ChatPage() {
 
   const x402Config = useMemo(() => getClientX402Config(), []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
 
   const [module, setModule] = useState<ModuleInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -230,7 +233,9 @@ export default function ChatPage() {
         setError('Free preview complete. Pay to continue chatting.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send message');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to send message';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
@@ -248,8 +253,11 @@ export default function ChatPage() {
       await sendMessage(pendingMessage, paymentHeader);
       setPendingMessage(null);
       setPaymentRequirements(null);
+      showToast('Payment successful!', 'success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed');
+      const errorMsg = err instanceof Error ? err.message : 'Payment failed';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
       setLoading(false);
     }
   };
@@ -370,25 +378,33 @@ export default function ChatPage() {
         {/* Info Banners */}
         <div className="border-t border-[var(--color-border)]">
           {paymentInfo && (
-            <div className="px-4 py-2 bg-[var(--color-success-light)] text-sm flex items-center gap-2">
+            <div className="px-4 py-2 bg-[var(--color-success-light)] text-sm flex items-center gap-2 flex-wrap">
               <svg className="w-4 h-4 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-[var(--color-success)] font-medium">Payment Confirmed</span>
-              <span className="text-[var(--color-text-secondary)] font-mono text-xs ml-2">
-                TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-6)} | {formatPrice(paymentInfo.value || '0')}
+              <span className="text-[var(--color-text-secondary)] font-mono text-xs flex items-center gap-1">
+                TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-6)}
+                {paymentInfo.txHash && <CopyButton text={paymentInfo.txHash} label="tx hash" />}
+              </span>
+              <span className="text-[var(--color-text-secondary)] text-xs">
+                | {formatPrice(paymentInfo.value || '0')}
               </span>
             </div>
           )}
 
           {upstreamPayment && (
-            <div className="px-4 py-2 bg-[var(--color-warning-light)] text-sm flex items-center gap-2">
+            <div className="px-4 py-2 bg-[var(--color-warning-light)] text-sm flex items-center gap-2 flex-wrap">
               <svg className="w-4 h-4 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <span className="text-[var(--color-warning)] font-medium">Upstream Payment (Remix)</span>
-              <span className="text-[var(--color-text-secondary)] font-mono text-xs ml-2">
-                TX: {upstreamPayment.txHash?.slice(0, 10)}... | {formatPrice(upstreamPayment.value || '0')} → {formatAddress(upstreamPayment.to || '')}
+              <span className="text-[var(--color-text-secondary)] font-mono text-xs flex items-center gap-1">
+                TX: {upstreamPayment.txHash?.slice(0, 10)}...
+                {upstreamPayment.txHash && <CopyButton text={upstreamPayment.txHash} label="tx hash" />}
+              </span>
+              <span className="text-[var(--color-text-secondary)] text-xs">
+                | {formatPrice(upstreamPayment.value || '0')} → {formatAddress(upstreamPayment.to || '')}
               </span>
             </div>
           )}

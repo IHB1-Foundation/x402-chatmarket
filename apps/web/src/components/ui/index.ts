@@ -7,3 +7,4 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 export { Skeleton, SkeletonText, SkeletonCard, SkeletonGrid } from './Skeleton';
 export { ToastProvider, useToast } from './Toast';
 export { ThemeToggle, ThemeProvider, useTheme } from './ThemeToggle';
+export { CopyButton, CopyableText } from './CopyButton';
