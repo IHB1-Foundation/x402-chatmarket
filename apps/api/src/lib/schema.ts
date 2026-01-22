@@ -235,7 +235,7 @@ async function runFallbackSchema(): Promise<void> {
   ];
 
   for (const sql of statements) {
-    await pool.query({ text: sql, queryMode: 'simple' });
+    await pool.query(sql);
   }
 }
 
@@ -248,7 +248,7 @@ export async function ensureDbSchema(): Promise<{ method: EnsureSchemaMethod }> 
   if (initSql) {
     try {
       console.log('DB schema missing: running infra/init-db.sql (best-effort).');
-      await pool.query({ text: initSql, queryMode: 'simple' });
+      await pool.query(initSql);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`WARN: infra/init-db.sql failed: ${msg}`);
@@ -266,4 +266,3 @@ export async function ensureDbSchema(): Promise<{ method: EnsureSchemaMethod }> 
 
   return { method: 'fallback' };
 }
-

@@ -59,7 +59,8 @@ await loadEnvFile(path.resolve(process.cwd(), '.env.railway'));
 
 // Validate config early - will exit if invalid
 const config = getConfig();
-await ensureDbSchema();
+const schemaInit = await ensureDbSchema();
+console.log(`DB schema ensured (method=${schemaInit.method}).`);
 
 const fastify = Fastify({
   logger: true,
@@ -77,6 +78,18 @@ await fastify.register(authPlugin);
 
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
+});
+
+fastify.get('/health/version', async () => {
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    schema: schemaInit,
+    git: {
+      sha: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
+      branch: process.env.RAILWAY_GIT_BRANCH ?? null,
+    },
+  };
 });
 
 fastify.get('/health/db', async (request, reply) => {
