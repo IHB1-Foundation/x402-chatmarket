@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
-import { cronos, cronosTestnet } from 'wagmi/chains';
+import { cronosTestnet } from 'wagmi/chains';
 import { isAddress } from 'viem';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
@@ -28,14 +28,12 @@ export function Navbar() {
   const { disconnectAsync, isPending: isDisconnecting } = useDisconnect();
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
 
-  const desiredChainIdRaw = parseInt(process.env.NEXT_PUBLIC_X402_CHAIN_ID || `${cronosTestnet.id}`, 10);
-  const desiredChainId = desiredChainIdRaw === cronos.id ? cronos.id : cronosTestnet.id;
-  const desiredChainLabel = desiredChainId === cronos.id ? 'Cronos' : 'Cronos Testnet';
+  const desiredChainId = cronosTestnet.id;
+  const desiredChainLabel = 'Cronos Testnet';
   const isWrongNetwork = isConnected && chainId != null && chainId !== desiredChainId;
   const connectedLabel = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected';
 
-  const defaultAssetContract =
-    desiredChainId === cronosTestnet.id ? '0xc01efAaF7C5C61bEbFAeb358E1161b537b8bC0e0' : undefined;
+  const defaultAssetContract = '0xc01efAaF7C5C61bEbFAeb358E1161b537b8bC0e0';
   const assetContractRaw = process.env.NEXT_PUBLIC_X402_ASSET_CONTRACT || defaultAssetContract;
   const assetContract =
     assetContractRaw && isAddress(assetContractRaw) ? (assetContractRaw as `0x${string}`) : undefined;
@@ -76,14 +74,14 @@ export function Navbar() {
   };
 
   const handleConnect = async () => {
-    const metaMaskConnector = connectors[0];
+    const metaMaskConnector = connectors.find((connector) => connector.name === 'MetaMask') ?? connectors[0];
     if (!metaMaskConnector) {
       showToast('MetaMask connector not available', 'error');
       return;
     }
 
     try {
-      await connectAsync({ connector: metaMaskConnector });
+      await connectAsync({ connector: metaMaskConnector, chainId: desiredChainId });
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to connect MetaMask', 'error');
     }

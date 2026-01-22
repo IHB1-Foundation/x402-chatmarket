@@ -5,7 +5,7 @@ import { useAccount, useSignMessage } from 'wagmi';
 import { SiweMessage } from 'siwe';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const DEFAULT_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_X402_CHAIN_ID || '338', 10);
+const DEFAULT_CHAIN_ID = 338;
 
 interface User {
   id: string;

@@ -241,7 +241,7 @@ export default function SellerDashboard() {
         {authError && <p className="text-[var(--color-error)] mb-4">{authError}</p>}
 
         <Button onClick={login} disabled={authLoading}>
-          {authLoading ? 'Signing in...' : 'Sign In with Cronos'}
+          {authLoading ? 'Signing in...' : 'Sign In with MetaMask'}
         </Button>
 
         <Link href="/" className="inline-block mt-8 text-[var(--color-primary)]">

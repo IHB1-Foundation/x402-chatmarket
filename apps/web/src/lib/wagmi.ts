@@ -1,14 +1,13 @@
 import { http, createConfig } from 'wagmi';
-import { cronosTestnet, cronos } from 'wagmi/chains';
-import { injected } from '@wagmi/core';
+import { cronosTestnet } from 'wagmi/chains';
+import { metaMask } from 'wagmi/connectors';
 
 export const config = createConfig({
-  chains: [cronosTestnet, cronos],
+  chains: [cronosTestnet],
   ssr: true,
-  connectors: [injected({ target: 'metaMask' })],
+  connectors: [metaMask()],
   transports: {
     [cronosTestnet.id]: http(),
-    [cronos.id]: http(),
   },
 });
 
