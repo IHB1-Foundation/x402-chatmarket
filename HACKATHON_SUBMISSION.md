@@ -23,8 +23,8 @@ SoulForge also supports **Remix (derivative) modules**: a remix module can call 
 ## Links (fill these in)
 - GitHub Repo: <YOUR_GITHUB_REPO_URL>
 - Demo Video: <YOUR_DEMO_VIDEO_URL>
-- Deployed Prototype (Web, Vercel): <YOUR_WEB_URL> (Vercel Root Directory: `apps/web`)
-- Deployed Prototype (API, Railway): <YOUR_API_URL>
+- Deployed Prototype (Web, Vercel): https://www.soulforgemarket.xyz/ (Vercel Root Directory: `apps/web`)
+- Deployed Prototype (API, Railway): https://api.soulforgemarket.xyz/
 
 ## Demo Video Checklist (suggested shots)
 1) Marketplace: browse modules + open a module detail page.

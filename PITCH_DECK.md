@@ -171,8 +171,8 @@
 - **Partners/Investors**: Let's talk about scaling this
 
 **Links:**
-- Live demo (Vercel, Root: `apps/web`): [URL]
-- API (Railway): [URL]
+- Live demo (Vercel, Root: `apps/web`): https://www.soulforgemarket.xyz/
+- API (Railway): https://api.soulforgemarket.xyz/
 - GitHub: [URL]
 - Contact: [email]
 
