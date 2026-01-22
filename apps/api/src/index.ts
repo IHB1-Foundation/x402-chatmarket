@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import type { Module } from '@soulforge/shared';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { getConfig } from './config.js';
 import { checkDbConnection, checkPgvector } from './lib/db.js';
 import { checkRedisConnection } from './lib/redis.js';
@@ -13,6 +15,44 @@ import { sellerRoutes } from './routes/seller.js';
 import { modulesRoutes } from './routes/modules.js';
 import { chatRoutes } from './routes/chat.js';
 import { adminRoutes } from './routes/admin.js';
+
+async function loadEnvFile(filePath: string): Promise<void> {
+  try {
+    const contents = await fs.readFile(filePath, 'utf8');
+    for (const rawLine of contents.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eqIndex = line.indexOf('=');
+      if (eqIndex === -1) continue;
+      const key = line.slice(0, eqIndex).trim();
+      let value = line.slice(eqIndex + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+    }
+  } catch (err) {
+    // If the file doesn't exist, ignore silently (e.g., production environments)
+    if (
+      err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      (err as { code?: string }).code === 'ENOENT'
+    ) {
+      return;
+    }
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`WARN: Failed to load .env file at ${filePath}: ${msg}`);
+  }
+}
+
+// Load local env file if present (pnpm --filter api dev runs with cwd=apps/api)
+await loadEnvFile(path.resolve(process.cwd(), '.env'));
 
 // Validate config early - will exit if invalid
 const config = getConfig();

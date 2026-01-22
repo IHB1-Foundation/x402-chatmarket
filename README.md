@@ -2,6 +2,8 @@
 
 A hosted AI persona + knowledge module marketplace where modules are sold as paywalled API capabilities using **x402 (HTTP 402 Payment Required)** to enforce payment-gated access.
 
+Hackathon submission draft: see `HACKATHON_SUBMISSION.md`.
+
 ## Features
 
 - **x402 Payment-Gated Access**: Pay-per-message or pay-per-session pricing
@@ -67,6 +69,16 @@ This starts:
 - API server at http://localhost:3001
 - Web app at http://localhost:3000
 
+### One-Command Demos
+
+```bash
+# Seeded demo with mock payments (fastest)
+pnpm demo
+
+# Seeded demo with on-chain settlement via facilitator (Cronos Testnet)
+pnpm demo:onchain
+```
+
 ## Environment Variables
 
 ### API (`apps/api/.env`)
@@ -81,9 +93,9 @@ This starts:
 | `LLM_MODEL` | Chat completion model | `gpt-4o-mini` |
 | `EMBEDDING_MODEL` | Embedding model | `text-embedding-3-small` |
 | `X402_MOCK_MODE` | Enable mock payment mode (no real payments) | `false` |
-| `X402_NETWORK` | Blockchain network | `base-sepolia` |
+| `X402_NETWORK` | Blockchain network | `cronos-testnet` |
 | `X402_ASSET_CONTRACT` | Payment token contract address | - |
-| `X402_CHAIN_ID` | Chain ID | `84532` |
+| `X402_CHAIN_ID` | Chain ID | `338` |
 | `JWT_SECRET` | Secret for JWT tokens (32+ chars) | Required |
 
 ### Web (`apps/web/.env`)
@@ -91,8 +103,10 @@ This starts:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | API server URL | `http://localhost:3001` |
-| `NEXT_PUBLIC_X402_NETWORK` | Network name | `base-sepolia` |
-| `NEXT_PUBLIC_X402_CHAIN_ID` | Chain ID | `84532` |
+| `NEXT_PUBLIC_X402_NETWORK` | Network name | `cronos-testnet` |
+| `NEXT_PUBLIC_X402_CHAIN_ID` | Chain ID | `338` |
+| `NEXT_PUBLIC_X402_ASSET_CONTRACT` | Payment token contract address (for balance display) | - |
+| `NEXT_PUBLIC_X402_ASSET_DECIMALS` | Payment token decimals | `6` |
 
 ## Project Structure
 
@@ -128,7 +142,7 @@ This starts:
 2. Server returns `402 Payment Required` with `paymentRequirements`
 3. Client prompts wallet to sign EIP-712 payment authorization
 4. Client retries with `X-PAYMENT` header containing signed authorization
-5. Server verifies and settles payment via facilitator
+5. Server verifies and settles payment via facilitator (relayed on-chain settlement; returns `txHash`)
 6. Server executes RAG and returns response
 
 ## Local Development with Mock Mode

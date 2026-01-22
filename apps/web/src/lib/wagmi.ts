@@ -1,17 +1,14 @@
 import { http, createConfig } from 'wagmi';
-import { baseSepolia, base } from 'wagmi/chains';
-import { injected, metaMask, coinbaseWallet } from 'wagmi/connectors';
+import { cronosTestnet, cronos } from 'wagmi/chains';
+import { injected } from '@wagmi/core';
 
 export const config = createConfig({
-  chains: [baseSepolia, base],
-  connectors: [
-    injected(),
-    metaMask(),
-    coinbaseWallet({ appName: 'SoulForge' }),
-  ],
+  chains: [cronosTestnet, cronos],
+  ssr: true,
+  connectors: [injected({ target: 'metaMask' })],
   transports: {
-    [baseSepolia.id]: http(),
-    [base.id]: http(),
+    [cronosTestnet.id]: http(),
+    [cronos.id]: http(),
   },
 });
 

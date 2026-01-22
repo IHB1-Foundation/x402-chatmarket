@@ -5,6 +5,7 @@ import { useAccount, useSignMessage } from 'wagmi';
 import { SiweMessage } from 'siwe';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const DEFAULT_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_X402_CHAIN_ID || '338', 10);
 
 interface User {
   id: string;
@@ -88,7 +89,7 @@ export function useSellerAuth() {
         statement: 'Sign in to SoulForge as a seller',
         uri: window.location.origin,
         version: '1',
-        chainId: chainId || 1,
+        chainId: chainId ?? DEFAULT_CHAIN_ID,
         nonce,
       });
 

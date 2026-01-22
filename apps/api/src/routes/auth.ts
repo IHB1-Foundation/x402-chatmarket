@@ -5,7 +5,7 @@ import { getPool } from '../lib/db.js';
 import { getConfig } from '../config.js';
 
 const NonceRequestSchema = z.object({
-  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'),
+  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid EVM address'),
 });
 
 const VerifyRequestSchema = z.object({

@@ -283,9 +283,9 @@ async function main(): Promise<void> {
 
   const seedWallet =
     (process.env.SEED_WALLET_ADDRESS || '0x742d35Cc6634C0532925a3b844Bc9e7595f8bBf5').toLowerCase();
-  const network = config.X402_NETWORK || 'base-sepolia';
+  const network = config.X402_NETWORK || 'cronos-testnet';
   const assetContract =
-    config.X402_ASSET_CONTRACT || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+    config.X402_ASSET_CONTRACT || '0xc01efAaF7C5C61bEbFAeb358E1161b537b8bC0e0';
 
   console.log('Starting seed...');
   console.log(`Network: ${network}`);

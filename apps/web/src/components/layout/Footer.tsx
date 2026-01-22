@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { LogoMark } from '../brand/LogoMark';
 
 export function Footer() {
   return (
@@ -9,19 +10,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Brand */}
           <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
-            <svg
-              className="w-5 h-5 text-[var(--color-primary)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+            <LogoMark size={20} className="shrink-0" />
             <span className="text-sm font-medium">SoulForge</span>
             <span className="text-sm">- Pay-per-use AI modules with x402</span>
           </div>

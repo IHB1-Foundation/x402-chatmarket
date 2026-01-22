@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useAccount, useConnect, useDisconnect, useSignTypedData } from 'wagmi';
+import { useAccount, useSignTypedData } from 'wagmi';
 import type { PaymentRequirements } from '@soulforge/shared';
 import { getClientX402Config } from '../../lib/x402-config';
 import { Button } from '../../components/ui/Button';
@@ -43,8 +43,6 @@ function getStepStatus(step: string, currentStep: FlowStep): 'completed' | 'acti
 
 export default function X402PocPage(): React.ReactElement {
   const { address, isConnected } = useAccount();
-  const { connectors, connect } = useConnect();
-  const { disconnect } = useDisconnect();
   const { signTypedDataAsync } = useSignTypedData();
   const { showToast } = useToast();
 
@@ -264,29 +262,20 @@ export default function X402PocPage(): React.ReactElement {
               1. Connect Wallet
             </h2>
             {isConnected ? (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Badge variant="success">Connected</Badge>
                   <span className="text-sm font-mono text-[var(--color-text-secondary)]">
                     {address?.slice(0, 6)}...{address?.slice(-4)}
                   </span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => disconnect()}>
-                  Disconnect
-                </Button>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {connectors.map((connector) => (
-                  <Button
-                    key={connector.uid}
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => connect({ connector })}
-                  >
-                    {connector.name}
-                  </Button>
-                ))}
+              <div className="space-y-2">
+                <Badge variant="warning">Not connected</Badge>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Connect MetaMask using the button in the header to continue.
+                </p>
               </div>
             )}
           </Card>

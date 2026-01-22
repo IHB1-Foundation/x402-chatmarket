@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { useSellerAuth } from '../../hooks/useSellerAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -10,6 +10,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { CopyButton } from '../../components/ui/CopyButton';
 import { useToast } from '../../components/ui/Toast';
+import { getTxExplorerUrl } from '../../lib/explorer';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -109,8 +110,6 @@ function KPICard({ label, value, subtext }: { label: string; value: string; subt
 }
 
 export default function SellerDashboard() {
-  const { connectors, connect } = useConnect();
-  const { disconnect } = useDisconnect();
   const { isConnected, address } = useAccount();
   const { isAuthenticated, isLoading: authLoading, error: authError, login, logout, getAuthHeaders, user } =
     useSellerAuth();
@@ -218,14 +217,9 @@ export default function SellerDashboard() {
     return (
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-bold mb-4">Seller Dashboard</h1>
-        <p className="text-[var(--color-text-secondary)] mb-8">Connect your wallet to access the seller dashboard.</p>
-        <div className="flex gap-3 flex-wrap">
-          {connectors.map((connector) => (
-            <Button key={connector.uid} onClick={() => connect({ connector })}>
-              Connect {connector.name}
-            </Button>
-          ))}
-        </div>
+        <p className="text-[var(--color-text-secondary)] mb-8">
+          Connect your MetaMask wallet using the button in the header to access the seller dashboard.
+        </p>
         <Link href="/" className="inline-block mt-8 text-[var(--color-primary)]">
           &larr; Back to Home
         </Link>
@@ -240,9 +234,6 @@ export default function SellerDashboard() {
         <h1 className="text-3xl font-bold mb-4">Seller Dashboard</h1>
         <div className="mb-4">
           <p className="text-[var(--color-success)]">Wallet: {formatAddress(address!)}</p>
-          <Button variant="outline" size="sm" onClick={() => disconnect()} className="mt-2">
-            Disconnect
-          </Button>
         </div>
 
         <p className="text-[var(--color-text-secondary)] mb-4">Sign in with your wallet to access seller features.</p>
@@ -250,7 +241,7 @@ export default function SellerDashboard() {
         {authError && <p className="text-[var(--color-error)] mb-4">{authError}</p>}
 
         <Button onClick={login} disabled={authLoading}>
-          {authLoading ? 'Signing in...' : 'Sign In with Ethereum'}
+          {authLoading ? 'Signing in...' : 'Sign In with Cronos'}
         </Button>
 
         <Link href="/" className="inline-block mt-8 text-[var(--color-primary)]">
@@ -403,6 +394,16 @@ export default function SellerDashboard() {
                               {formatAddress(payment.txHash)}
                             </span>
                             <CopyButton text={payment.txHash} label="tx hash" />
+                            {getTxExplorerUrl({ network: payment.network, txHash: payment.txHash }) && (
+                              <a
+                                href={getTxExplorerUrl({ network: payment.network, txHash: payment.txHash }) as string}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-[var(--color-primary)] hover:underline"
+                              >
+                                View
+                              </a>
+                            )}
                           </span>
                         ) : (
                           <span className="text-[var(--color-text-tertiary)]">—</span>

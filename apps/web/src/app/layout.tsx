@@ -9,6 +9,17 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SoulForge',
   description: 'AI Persona & Knowledge Module Marketplace - Pay-per-use with x402',
+  themeColor: '#0070f3',
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({

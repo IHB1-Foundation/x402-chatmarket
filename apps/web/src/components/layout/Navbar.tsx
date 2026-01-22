@@ -3,8 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
+import { cronos, cronosTestnet } from 'wagmi/chains';
+import { isAddress } from 'viem';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { useToast } from '../ui/Toast';
+import { LogoMark } from '../brand/LogoMark';
 
 const navLinks = [
   { href: '/marketplace', label: 'Marketplace' },
@@ -15,6 +21,90 @@ const navLinks = [
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { showToast } = useToast();
+
+  const { address, isConnected, chainId } = useAccount();
+  const { connectAsync, connectors, isPending: isConnecting } = useConnect();
+  const { disconnectAsync, isPending: isDisconnecting } = useDisconnect();
+  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
+
+  const desiredChainIdRaw = parseInt(process.env.NEXT_PUBLIC_X402_CHAIN_ID || `${cronosTestnet.id}`, 10);
+  const desiredChainId = desiredChainIdRaw === cronos.id ? cronos.id : cronosTestnet.id;
+  const desiredChainLabel = desiredChainId === cronos.id ? 'Cronos' : 'Cronos Testnet';
+  const isWrongNetwork = isConnected && chainId != null && chainId !== desiredChainId;
+  const connectedLabel = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected';
+
+  const defaultAssetContract =
+    desiredChainId === cronosTestnet.id ? '0xc01efAaF7C5C61bEbFAeb358E1161b537b8bC0e0' : undefined;
+  const assetContractRaw = process.env.NEXT_PUBLIC_X402_ASSET_CONTRACT || defaultAssetContract;
+  const assetContract =
+    assetContractRaw && isAddress(assetContractRaw) ? (assetContractRaw as `0x${string}`) : undefined;
+
+  const walletAddress = address as `0x${string}` | undefined;
+
+  const { data: usdBalance, isLoading: isUsdBalanceLoading } = useBalance({
+    address: walletAddress,
+    token: assetContract,
+    chainId: desiredChainId,
+    query: {
+      enabled: Boolean(isConnected && walletAddress && assetContract && !isWrongNetwork),
+      refetchInterval: 15_000,
+    },
+  });
+
+  const formatBalanceUsd = (value: bigint, decimals: number): string => {
+    const displayDecimals: number = 2;
+
+    if (displayDecimals === 0) {
+      const divisor = 10n ** BigInt(decimals);
+      return (value / divisor).toString();
+    }
+
+    let scaled: bigint;
+    if (decimals >= displayDecimals) {
+      const divisor = 10n ** BigInt(decimals - displayDecimals);
+      scaled = (value + divisor / 2n) / divisor; // rounded to displayDecimals
+    } else {
+      const multiplier = 10n ** BigInt(displayDecimals - decimals);
+      scaled = value * multiplier;
+    }
+
+    const base = 10n ** BigInt(displayDecimals);
+    const integerPart = scaled / base;
+    const fractionalPart = scaled % base;
+    return `${integerPart.toString()}.${fractionalPart.toString().padStart(displayDecimals, '0')}`;
+  };
+
+  const handleConnect = async () => {
+    const metaMaskConnector = connectors[0];
+    if (!metaMaskConnector) {
+      showToast('MetaMask connector not available', 'error');
+      return;
+    }
+
+    try {
+      await connectAsync({ connector: metaMaskConnector });
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to connect MetaMask', 'error');
+    }
+  };
+
+  const handleSwitchToCronos = async () => {
+    try {
+      await switchChainAsync({ chainId: desiredChainId });
+      showToast(`Switched to ${desiredChainLabel}`, 'success', 2000);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to switch to ${desiredChainLabel}`, 'error');
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await disconnectAsync();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to disconnect', 'error');
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-40 w-full border-b border-[var(--color-border)] bg-[var(--color-surface)]/80 backdrop-blur-md">
@@ -25,19 +115,7 @@ export function Navbar() {
             href="/"
             className="flex items-center gap-2 text-xl font-bold text-[var(--color-text-primary)] hover:text-[var(--color-primary)] transition-colors"
           >
-            <svg
-              className="w-8 h-8 text-[var(--color-primary)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+            <LogoMark size={32} className="shrink-0" />
             <span className="hidden sm:inline">SoulForge</span>
           </Link>
 
@@ -68,6 +146,58 @@ export function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            {/* Wallet */}
+            {isConnected ? (
+              <div className="hidden sm:flex items-center gap-2">
+                <Badge variant={isWrongNetwork ? 'warning' : 'success'} size="sm">
+                  {isWrongNetwork ? 'Wrong network' : desiredChainLabel}
+                </Badge>
+                {!isWrongNetwork && usdBalance && (
+                  <Badge variant="outline" size="sm">
+                    USD ${formatBalanceUsd(usdBalance.value, usdBalance.decimals)}
+                  </Badge>
+                )}
+                {!isWrongNetwork && isUsdBalanceLoading && assetContract && (
+                  <Badge variant="outline" size="sm">
+                    USD ...
+                  </Badge>
+                )}
+                <Badge variant="outline" size="sm">
+                  {connectedLabel}
+                </Badge>
+                {isWrongNetwork ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleSwitchToCronos}
+                    isLoading={isSwitching}
+                  >
+                    Switch
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDisconnect}
+                    isLoading={isDisconnecting}
+                  >
+                    Disconnect
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="hidden sm:block">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleConnect}
+                  isLoading={isConnecting}
+                >
+                  Connect MetaMask
+                </Button>
+              </div>
+            )}
+
             <ThemeToggle />
 
             {/* Mobile menu button */}
@@ -90,6 +220,61 @@ export function Navbar() {
         {/* Mobile Nav */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-[var(--color-border)]">
+            <div className="px-3 pb-3">
+              {isConnected ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={isWrongNetwork ? 'warning' : 'success'} size="sm">
+                      {isWrongNetwork ? 'Wrong network' : desiredChainLabel}
+                    </Badge>
+                    {!isWrongNetwork && usdBalance && (
+                      <Badge variant="outline" size="sm">
+                        USD ${formatBalanceUsd(usdBalance.value, usdBalance.decimals)}
+                      </Badge>
+                    )}
+                    {!isWrongNetwork && isUsdBalanceLoading && assetContract && (
+                      <Badge variant="outline" size="sm">
+                        USD ...
+                      </Badge>
+                    )}
+                    <Badge variant="outline" size="sm">
+                      {connectedLabel}
+                    </Badge>
+                  </div>
+                  {isWrongNetwork ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleSwitchToCronos}
+                      isLoading={isSwitching}
+                      fullWidth
+                    >
+                      Switch to {desiredChainLabel}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDisconnect}
+                      isLoading={isDisconnecting}
+                      fullWidth
+                    >
+                      Disconnect
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleConnect}
+                  isLoading={isConnecting}
+                  fullWidth
+                >
+                  Connect MetaMask
+                </Button>
+              )}
+            </div>
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAccount } from 'wagmi';
@@ -37,9 +37,9 @@ export default function CreateModulePage() {
   const [payTo, setPayTo] = useState(address || '');
 
   // Update payTo when address changes
-  useState(() => {
+  useEffect(() => {
     if (address && !payTo) setPayTo(address);
-  });
+  }, [address, payTo]);
 
   if (!isAuthenticated) {
     return (

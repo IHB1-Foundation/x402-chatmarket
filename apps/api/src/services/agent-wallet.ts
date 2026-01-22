@@ -217,7 +217,7 @@ export async function buildAgentPaymentHeader(params: {
     throw new Error(`No agent wallet found for module ${moduleId}`);
   }
 
-  const chainId = config.X402_CHAIN_ID || 84532; // base-sepolia default
+  const chainId = config.X402_CHAIN_ID ?? 338; // cronos-testnet default
   const validAfter = Math.floor(Date.now() / 1000);
   const validBefore = validAfter + 300; // 5 minutes
   const nonce = Date.now();

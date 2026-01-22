@@ -1,4 +1,5 @@
 import fastifyJwt from '@fastify/jwt';
+import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getConfig } from '../config.js';
 
@@ -15,7 +16,7 @@ declare module '@fastify/jwt' {
   }
 }
 
-export async function authPlugin(fastify: FastifyInstance): Promise<void> {
+async function authPluginImpl(fastify: FastifyInstance): Promise<void> {
   const config = getConfig();
 
   const jwtSecret = config.JWT_SECRET;
@@ -38,3 +39,8 @@ export async function authPlugin(fastify: FastifyInstance): Promise<void> {
     }
   });
 }
+
+// Expose decorators to the parent scope (so route plugins can access fastify.authenticate)
+export const authPlugin = fp(authPluginImpl, {
+  name: 'auth-plugin',
+});

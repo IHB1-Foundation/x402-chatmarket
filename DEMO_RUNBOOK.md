@@ -21,6 +21,19 @@ Open http://localhost:3000 to see the marketplace with pre-populated modules.
 
 **Note**: Demo mode shows a purple banner at the top indicating mock mode is active.
 
+### Quick Start (On-Chain Settlement)
+
+To demo real on-chain settlement on Cronos Testnet (required for hackathon submission), run:
+
+```bash
+# Starts infra + seeded data, but uses the real x402 facilitator (no mock)
+pnpm demo:onchain
+```
+
+Prereqs:
+- `apps/api/.env` must have a valid `X402_FACILITATOR_BASE_URL` (the script forces `X402_MOCK_MODE=false`)
+- Your wallet must hold devUSDC.e on Cronos Testnet (for payments)
+
 ---
 
 ## Pre-Demo Setup (Manual Method)
@@ -53,19 +66,17 @@ You need a browser wallet (MetaMask recommended):
 
 1. Install MetaMask extension
 2. Create or import a wallet
-3. Add Base Sepolia testnet:
-   - Network Name: Base Sepolia
-   - RPC URL: https://sepolia.base.org
-   - Chain ID: 84532
-   - Currency Symbol: ETH
+3. Add Cronos Testnet:
+   - Network Name: Cronos Testnet
+   - RPC URL: https://evm-t3.cronos.org
+   - Chain ID: 338
+   - Currency Symbol: tCRO
+   - Block Explorer: https://explorer.cronos.org/testnet
 
 **For real demo (not mock mode):**
-- Get testnet ETH from Base Sepolia faucets:
-  - https://docs.base.org/tools/network-faucets
-  - https://www.alchemy.com/faucets/base-sepolia
-- Get testnet USDC from Circle faucet:
-  - https://faucet.circle.com
-  - https://developers.circle.com/w3s/developer-console-faucet
+- Get testnet tCRO for gas
+- Mint devUSDC.e (payment token):
+  - https://faucet.cronos.org
 
 ### 3. Pre-Create Demo Module (Optional)
 
@@ -138,7 +149,7 @@ Create a module before demo to save time:
 
 5. Connect wallet (if not connected)
 6. Click "Pay & Send"
-7. **Sign the transaction** in MetaMask
+7. **Sign the EIP-712 payment authorization** in MetaMask (the facilitator relays the on-chain settlement)
 8. **Show successful response**
 
 > "After signing the payment authorization, the server verifies and settles the payment, then returns the full AI response."

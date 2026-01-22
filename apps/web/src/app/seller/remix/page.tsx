@@ -529,9 +529,9 @@ export default function CreateRemixPage() {
             <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fffde7', borderRadius: '4px' }}>
               <strong>How to fund (testnet):</strong>
               <ol style={{ margin: '0.5rem 0 0 1.5rem', padding: 0, fontSize: '0.875rem' }}>
-                <li>Go to a testnet faucet (e.g., Base Sepolia faucet)</li>
+                <li>Go to a Cronos Testnet faucet (e.g., https://faucet.cronos.org)</li>
                 <li>Copy the address above</li>
-                <li>Request testnet USDC or ETH</li>
+                <li>Request testnet tCRO (gas) and devUSDC.e (payment token)</li>
                 <li>Wait for confirmation</li>
                 <li>Your remix can now pay the upstream module!</li>
               </ol>

@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useAccount, useConnect, useDisconnect, useSignTypedData } from 'wagmi';
+import { useAccount, useSignTypedData } from 'wagmi';
 import { getClientX402Config } from '../../../lib/x402-config';
+import { getTxExplorerUrl } from '../../../lib/explorer';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
@@ -60,8 +61,6 @@ export default function ChatPage() {
   const tryMode = searchParams.get('mode') === 'try';
 
   const { address, isConnected } = useAccount();
-  const { connectors, connect } = useConnect();
-  const { disconnect } = useDisconnect();
   const { signTypedDataAsync } = useSignTypedData();
 
   const x402Config = useMemo(() => getClientX402Config(), []);
@@ -81,6 +80,14 @@ export default function ChatPage() {
   const [paymentRequirements, setPaymentRequirements] = useState<any>(null);
   const [sessionPass, setSessionPass] = useState<SessionPassInfo | null>(null);
   const [upstreamPayment, setUpstreamPayment] = useState<UpstreamPaymentInfo | null>(null);
+
+  const paymentTxUrl = paymentInfo?.txHash
+    ? getTxExplorerUrl({ chainId: x402Config.chainId, network: x402Config.network, txHash: paymentInfo.txHash })
+    : null;
+
+  const upstreamTxUrl = upstreamPayment?.txHash
+    ? getTxExplorerUrl({ chainId: x402Config.chainId, network: x402Config.network, txHash: upstreamPayment.txHash })
+    : null;
 
   // Fetch module info
   useEffect(() => {
@@ -331,13 +338,9 @@ export default function ChatPage() {
                 {formatAddress(address!)}
               </Badge>
             ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => connect({ connector: connectors[0] })}
-              >
-                Connect Wallet
-              </Button>
+              <Badge variant="outline" size="sm">
+                Connect MetaMask in header
+              </Badge>
             )}
           </div>
         </div>
@@ -386,6 +389,16 @@ export default function ChatPage() {
               <span className="text-[var(--color-text-secondary)] font-mono text-xs flex items-center gap-1">
                 TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-6)}
                 {paymentInfo.txHash && <CopyButton text={paymentInfo.txHash} label="tx hash" />}
+                {paymentTxUrl && (
+                  <a
+                    href={paymentTxUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-sans text-[var(--color-success)] hover:underline"
+                  >
+                    View
+                  </a>
+                )}
               </span>
               <span className="text-[var(--color-text-secondary)] text-xs">
                 | {formatPrice(paymentInfo.value || '0')}
@@ -402,6 +415,16 @@ export default function ChatPage() {
               <span className="text-[var(--color-text-secondary)] font-mono text-xs flex items-center gap-1">
                 TX: {upstreamPayment.txHash?.slice(0, 10)}...
                 {upstreamPayment.txHash && <CopyButton text={upstreamPayment.txHash} label="tx hash" />}
+                {upstreamTxUrl && (
+                  <a
+                    href={upstreamTxUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-sans text-[var(--color-warning)] hover:underline"
+                  >
+                    View
+                  </a>
+                )}
               </span>
               <span className="text-[var(--color-text-secondary)] text-xs">
                 | {formatPrice(upstreamPayment.value || '0')} → {formatAddress(upstreamPayment.to || '')}
@@ -474,22 +497,13 @@ export default function ChatPage() {
               </div>
             </div>
             {!isConnected ? (
-              <div>
-                <p className="text-sm text-[var(--color-text-secondary)] mb-3">
-                  Connect your wallet to pay:
+              <div className="space-y-3">
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Connect MetaMask using the button in the header, then retry your message.
                 </p>
-                <div className="space-y-2">
-                  {connectors.map((connector) => (
-                    <Button
-                      key={connector.uid}
-                      variant="secondary"
-                      fullWidth
-                      onClick={() => connect({ connector })}
-                    >
-                      {connector.name}
-                    </Button>
-                  ))}
-                </div>
+                <Button variant="secondary" fullWidth onClick={() => setShowPaymentModal(false)}>
+                  Close
+                </Button>
               </div>
             ) : (
               <div className="flex gap-2">

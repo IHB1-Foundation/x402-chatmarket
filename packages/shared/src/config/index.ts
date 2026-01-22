@@ -22,10 +22,10 @@ const ApiConfigSchema = z.object({
 
   // x402 Payment
   X402_FACILITATOR_BASE_URL: z.string().url().optional(),
-  X402_NETWORK: z.string().default('base-sepolia'),
+  X402_NETWORK: z.string().default('cronos-testnet'),
   X402_ASSET_CONTRACT: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
   X402_ASSET_DECIMALS: z.coerce.number().int().default(6),
-  X402_CHAIN_ID: z.coerce.number().int().optional(),
+  X402_CHAIN_ID: z.coerce.number().int().default(338),
   X402_EIP712_NAME: z.string().default('x402'),
   X402_EIP712_VERSION: z.string().default('1'),
   X402_MOCK_MODE: z.coerce.boolean().default(false),
@@ -42,8 +42,10 @@ const WebConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   NEXT_PUBLIC_API_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
-  NEXT_PUBLIC_X402_NETWORK: z.string().default('base-sepolia'),
-  NEXT_PUBLIC_X402_CHAIN_ID: z.coerce.number().int().optional(),
+  NEXT_PUBLIC_X402_NETWORK: z.string().default('cronos-testnet'),
+  NEXT_PUBLIC_X402_CHAIN_ID: z.coerce.number().int().default(338),
+  NEXT_PUBLIC_X402_ASSET_CONTRACT: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
+  NEXT_PUBLIC_X402_ASSET_DECIMALS: z.coerce.number().int().default(6),
 });
 
 export type ApiConfig = z.infer<typeof ApiConfigSchema>;

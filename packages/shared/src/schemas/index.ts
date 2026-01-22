@@ -42,7 +42,7 @@ export const CreateModuleSchema = z.object({
   pricingMode: PricingModeSchema,
   priceAmount: z.string().regex(/^\d+$/, 'Must be integer string in smallest units'),
   sessionPolicy: SessionPolicySchema.nullable().optional(),
-  payTo: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'),
+  payTo: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid EVM address'),
 });
 
 export const ModuleDocumentInputSchema = z.object({
