@@ -40,6 +40,13 @@ interface Payment {
   createdAt: string;
 }
 
+interface Pagination {
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}
+
 interface Analytics {
   kpis: {
     totalRevenue7d: string;
@@ -117,14 +124,32 @@ export default function SellerDashboard() {
   const { showToast } = useToast();
 
   const [modules, setModules] = useState<Module[]>([]);
+  const [modulesPage, setModulesPage] = useState(1);
+  const [modulesPagination, setModulesPagination] = useState<Pagination | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [paymentsPagination, setPaymentsPagination] = useState<Pagination | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loadingModules, setLoadingModules] = useState(false);
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
+  const MODULES_PAGE_SIZE = 20;
+  const PAYMENTS_PAGE_SIZE = 20;
+
   // Stable auth headers getter
   const authHeaders = useCallback(() => getAuthHeaders(), [getAuthHeaders]);
+
+  // Reset pagination state on auth changes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setModules([]);
+    setModulesPagination(null);
+    setModulesPage(1);
+    setPayments([]);
+    setPaymentsPagination(null);
+    setPaymentsPage(1);
+  }, [isAuthenticated]);
 
   // Fetch seller's modules
   useEffect(() => {
@@ -133,12 +158,15 @@ export default function SellerDashboard() {
     const fetchModules = async () => {
       setLoadingModules(true);
       try {
-        const res = await fetch(`${API_URL}/api/seller/modules`, {
+        const res = await fetch(`${API_URL}/api/seller/modules?page=${modulesPage}&size=${MODULES_PAGE_SIZE}`, {
           headers: authHeaders(),
         });
         if (res.ok) {
           const data = await res.json();
-          setModules(data.modules);
+          setModules((prev) =>
+            modulesPage === 1 ? (data.modules || []) : [...prev, ...(data.modules || [])]
+          );
+          setModulesPagination(data.pagination || null);
         } else {
           showToast('Failed to load modules', 'error');
         }
@@ -151,7 +179,7 @@ export default function SellerDashboard() {
     };
 
     fetchModules();
-  }, [isAuthenticated, authHeaders, showToast]);
+  }, [isAuthenticated, authHeaders, showToast, modulesPage]);
 
   // Fetch payments
   useEffect(() => {
@@ -160,22 +188,28 @@ export default function SellerDashboard() {
     const fetchPayments = async () => {
       setLoadingPayments(true);
       try {
-        const res = await fetch(`${API_URL}/api/seller/payments?size=10`, {
+        const res = await fetch(`${API_URL}/api/seller/payments?page=${paymentsPage}&size=${PAYMENTS_PAGE_SIZE}`, {
           headers: authHeaders(),
         });
         if (res.ok) {
           const data = await res.json();
-          setPayments(data.payments);
+          setPayments((prev) =>
+            paymentsPage === 1 ? (data.payments || []) : [...prev, ...(data.payments || [])]
+          );
+          setPaymentsPagination(data.pagination || null);
+        } else {
+          showToast('Failed to load payments', 'error');
         }
       } catch (err) {
         console.error('Failed to fetch payments:', err);
+        showToast('Network error loading payments', 'error');
       } finally {
         setLoadingPayments(false);
       }
     };
 
     fetchPayments();
-  }, [isAuthenticated, authHeaders]);
+  }, [isAuthenticated, authHeaders, showToast, paymentsPage]);
 
   // Fetch analytics
   useEffect(() => {
@@ -327,6 +361,11 @@ export default function SellerDashboard() {
   }
 
   // Authenticated - show dashboard
+  const modulesHasMore = modulesPagination ? modulesPagination.page < modulesPagination.totalPages : false;
+  const paymentsHasMore = paymentsPagination ? paymentsPagination.page < paymentsPagination.totalPages : false;
+  const loadingModulesInitial = loadingModules && modules.length === 0;
+  const loadingPaymentsInitial = loadingPayments && payments.length === 0;
+
   return (
     <main className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Header */}
@@ -412,7 +451,7 @@ export default function SellerDashboard() {
       {/* Recent Payments */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Recent Payments</h2>
-        {loadingPayments ? (
+        {loadingPaymentsInitial ? (
           <Card padding="md">
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
@@ -492,6 +531,22 @@ export default function SellerDashboard() {
                 </tbody>
               </table>
             </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-[var(--color-border)]">
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                Showing {payments.length}
+                {paymentsPagination ? ` of ${paymentsPagination.total}` : ''} payments
+              </p>
+              {paymentsHasMore && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  isLoading={loadingPayments}
+                  onClick={() => setPaymentsPage((p) => p + 1)}
+                >
+                  Load More
+                </Button>
+              )}
+            </div>
           </Card>
         )}
       </section>
@@ -526,7 +581,7 @@ export default function SellerDashboard() {
       {/* Modules Section */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Your Modules</h2>
-        {loadingModules ? (
+        {loadingModulesInitial ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <Card key={i} padding="md">
@@ -591,6 +646,22 @@ export default function SellerDashboard() {
                 </div>
               </Card>
             ))}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                Showing {modules.length}
+                {modulesPagination ? ` of ${modulesPagination.total}` : ''} modules
+              </p>
+              {modulesHasMore && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  isLoading={loadingModules}
+                  onClick={() => setModulesPage((p) => p + 1)}
+                >
+                  Load More
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </section>

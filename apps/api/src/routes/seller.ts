@@ -138,12 +138,31 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
   );
 
   // List seller's modules
-  fastify.get(
+  const SellerModulesQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    size: z.coerce.number().int().positive().max(100).default(20),
+  });
+
+  fastify.get<{ Querystring: z.infer<typeof SellerModulesQuerySchema> }>(
     '/api/seller/modules',
     { preValidation: [fastify.authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Querystring: z.infer<typeof SellerModulesQuerySchema> }>,
+      reply: FastifyReply
+    ) => {
       const user = request.user as { sub: string; address: string; role: string };
       const pool = getPool();
+
+      const parseResult = SellerModulesQuerySchema.safeParse(request.query);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid query parameters',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const { page, size } = parseResult.data;
+      const offset = (page - 1) * size;
 
       const result = await pool.query(
         `SELECT id, type, name, description, tags, status,
@@ -151,9 +170,18 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
                 eval_score, created_at, updated_at
          FROM modules
          WHERE owner_user_id = $1
-         ORDER BY created_at DESC`,
+         ORDER BY created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [user.sub, size, offset]
+      );
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*) as total
+         FROM modules
+         WHERE owner_user_id = $1`,
         [user.sub]
       );
+      const total = parseInt(countResult.rows[0].total, 10);
 
       const modules = result.rows.map((row) => ({
         id: row.id,
@@ -172,7 +200,15 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         updatedAt: row.updated_at,
       }));
 
-      return reply.send({ modules });
+      return reply.send({
+        modules,
+        pagination: {
+          page,
+          size,
+          total,
+          totalPages: Math.ceil(total / size),
+        },
+      });
     }
   );
 
