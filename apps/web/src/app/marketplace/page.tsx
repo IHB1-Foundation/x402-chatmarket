@@ -142,6 +142,21 @@ export default function MarketplacePage() {
         <p className="text-[var(--color-text-secondary)]">
           Discover AI personas and knowledge modules
         </p>
+        <Card
+          padding="md"
+          className="mt-4 bg-[var(--color-background-secondary)]"
+        >
+          <div className="flex flex-col sm:flex-row gap-3 text-sm text-[var(--color-text-secondary)]">
+            <div className="flex items-start gap-2 flex-1">
+              <Badge variant="primary" size="sm" className="mt-0.5">Base</Badge>
+              <span>Standalone module (buyer pays the creator directly).</span>
+            </div>
+            <div className="flex items-start gap-2 flex-1">
+              <Badge variant="warning" size="sm" className="mt-0.5">Remix</Badge>
+              <span>Derivative module that calls and pays an upstream module at runtime.</span>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Search and Filters */}
@@ -428,8 +443,13 @@ function ModuleCard({
             <Badge
               variant={module.type === 'remix' ? 'warning' : 'primary'}
               size="sm"
+              title={
+                module.type === 'remix'
+                  ? 'Remix: derivative module that calls and pays an upstream module at runtime.'
+                  : 'Base: standalone module with its own persona + knowledge.'
+              }
             >
-              {module.type}
+              {module.type === 'remix' ? 'Remix' : 'Base'}
             </Badge>
           </div>
         </div>

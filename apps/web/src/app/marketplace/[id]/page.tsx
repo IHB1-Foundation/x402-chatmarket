@@ -135,8 +135,15 @@ export default function ModuleDetailPage() {
             {module.name}
           </h1>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={module.type === 'remix' ? 'warning' : 'primary'}>
-              {module.type}
+            <Badge
+              variant={module.type === 'remix' ? 'warning' : 'primary'}
+              title={
+                module.type === 'remix'
+                  ? 'Remix: derivative module that calls and pays an upstream module at runtime.'
+                  : 'Base: standalone module with its own persona + knowledge.'
+              }
+            >
+              {module.type === 'remix' ? 'Remix' : 'Base'}
             </Badge>
             <span className="text-sm text-[var(--color-text-secondary)]">
               by {formatAddress(module.ownerAddress)}
@@ -168,6 +175,47 @@ export default function ModuleDetailPage() {
           ))}
         </div>
       )}
+
+      {/* Base vs Remix explainer */}
+      <Card padding="md" className="mb-6 bg-[var(--color-background-secondary)]">
+        {module.type === 'remix' ? (
+          <div className="text-sm text-[var(--color-text-secondary)]">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="warning" size="sm">Remix</Badge>
+              <span className="font-medium text-[var(--color-text-primary)]">
+                Derivative module
+              </span>
+            </div>
+            <p>
+              Remix modules call an upstream module at runtime and pay upstream automatically.
+              You pay this module; upstream payment is handled server-side.
+            </p>
+            {module.upstreamModuleId && (
+              <p className="mt-2">
+                Upstream:{' '}
+                <Link
+                  href={`/marketplace/${module.upstreamModuleId}`}
+                  className="text-[var(--color-primary)] hover:underline font-medium"
+                >
+                  View Original
+                </Link>
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="text-sm text-[var(--color-text-secondary)]">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="primary" size="sm">Base</Badge>
+              <span className="font-medium text-[var(--color-text-primary)]">
+                Standalone module
+              </span>
+            </div>
+            <p>
+              Base modules are standalone: they use their own persona + knowledge, and buyers pay the creator directly.
+            </p>
+          </div>
+        )}
+      </Card>
 
       {/* Tabs */}
       <Tabs defaultTab="overview" className="mb-6">

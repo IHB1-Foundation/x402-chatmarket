@@ -165,6 +165,25 @@ export default function CreateRemixPage() {
       <p style={{ color: '#666', marginBottom: '2rem' }}>
         A remix module builds on an existing module, paying the upstream at runtime.
       </p>
+      <div
+        style={{
+          padding: '1rem',
+          backgroundColor: '#fff8e1',
+          border: '1px solid #ffe0b2',
+          borderRadius: '8px',
+          margin: '-1rem 0 2rem',
+          color: '#333',
+          fontSize: '0.9rem',
+          lineHeight: 1.4,
+        }}
+      >
+        <strong>Remix</strong> is a derivative module: buyers pay your remix, then the server uses a remix agent wallet to pay/call the upstream module and generate the final response.
+        If you want a standalone module,{' '}
+        <Link href="/seller/create" style={{ color: '#0070f3' }}>
+          create a Base module
+        </Link>
+        .
+      </div>
 
       {step !== 'success' && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>

@@ -395,6 +395,33 @@ export default function SellerDashboard() {
         </Link>
       </div>
 
+      {/* Base vs Remix explainer */}
+      <Card
+        padding="md"
+        className="mb-8 bg-[var(--color-background-secondary)]"
+      >
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="primary" size="sm">Base</Badge>
+              <p className="font-medium text-[var(--color-text-primary)]">Standalone module</p>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Uses your persona + knowledge. Buyers pay your <span className="font-mono">payTo</span> directly.
+            </p>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="warning" size="sm">Remix</Badge>
+              <p className="font-medium text-[var(--color-text-primary)]">Derivative module</p>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Calls an upstream module at runtime and pays upstream using a server-managed agent wallet.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* KPIs Section */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Revenue Overview</h2>
@@ -622,9 +649,17 @@ export default function SellerDashboard() {
                       >
                         {module.status}
                       </Badge>
-                      {module.type === 'remix' && (
-                        <Badge variant="primary" size="sm">Remix</Badge>
-                      )}
+                      <Badge
+                        variant={module.type === 'remix' ? 'warning' : 'primary'}
+                        size="sm"
+                        title={
+                          module.type === 'remix'
+                            ? 'Remix: derivative module that calls and pays an upstream module at runtime.'
+                            : 'Base: standalone module with its own persona + knowledge.'
+                        }
+                      >
+                        {module.type === 'remix' ? 'Remix' : 'Base'}
+                      </Badge>
                     </div>
                     <p className="text-sm text-[var(--color-text-secondary)] mt-1">
                       {module.pricingMode === 'per_message' ? 'Per message' : 'Per session'}: {formatPrice(module.priceAmount)}

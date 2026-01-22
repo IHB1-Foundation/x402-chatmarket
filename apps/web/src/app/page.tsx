@@ -188,8 +188,16 @@ export default function Home() {
                         <span className="font-semibold text-[var(--color-primary)]">
                           {formatPrice(module.priceAmount, module.pricingMode)}
                         </span>
-                        <Badge variant={module.type === 'remix' ? 'warning' : 'primary'} size="sm">
-                          {module.type}
+                        <Badge
+                          variant={module.type === 'remix' ? 'warning' : 'primary'}
+                          size="sm"
+                          title={
+                            module.type === 'remix'
+                              ? 'Remix: derivative module that calls and pays an upstream module at runtime.'
+                              : 'Base: standalone module with its own persona + knowledge.'
+                          }
+                        >
+                          {module.type === 'remix' ? 'Remix' : 'Base'}
                         </Badge>
                       </div>
                     </div>

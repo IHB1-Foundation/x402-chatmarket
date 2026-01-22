@@ -155,6 +155,25 @@ export default function CreateModulePage() {
       </Link>
 
       <h1>Create New Module</h1>
+      <div
+        style={{
+          padding: '1rem',
+          backgroundColor: '#f5faff',
+          border: '1px solid #d0e5ff',
+          borderRadius: '8px',
+          margin: '0.75rem 0 1.5rem',
+          color: '#333',
+          fontSize: '0.9rem',
+          lineHeight: 1.4,
+        }}
+      >
+        <strong>Base module</strong> is standalone: it uses your persona + knowledge, and buyers pay your module directly.
+        Want a derivative that builds on an existing module and pays upstream at runtime?{' '}
+        <Link href="/seller/remix" style={{ color: '#0070f3' }}>
+          Create a Remix
+        </Link>
+        .
+      </div>
 
       {/* Progress Steps */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>
