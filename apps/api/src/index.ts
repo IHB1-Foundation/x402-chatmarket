@@ -53,6 +53,8 @@ async function loadEnvFile(filePath: string): Promise<void> {
 
 // Load local env file if present (pnpm --filter api dev runs with cwd=apps/api)
 await loadEnvFile(path.resolve(process.cwd(), '.env'));
+// For Railway deployments we keep a tracked env file (demo-friendly, non-secret defaults)
+await loadEnvFile(path.resolve(process.cwd(), '.env.railway'));
 
 // Validate config early - will exit if invalid
 const config = getConfig();

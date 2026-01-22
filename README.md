@@ -162,6 +162,8 @@ Mock mode:
 
 ## Deployment
 
+For the full step-by-step guide (Vercel + Railway), see `DEPLOY.md`.
+
 ### Docker Deployment
 
 ```bash

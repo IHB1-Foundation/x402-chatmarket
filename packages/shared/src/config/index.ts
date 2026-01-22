@@ -59,7 +59,13 @@ export class ConfigValidationError extends Error {
 }
 
 export function validateApiConfig(env: Record<string, string | undefined>): ApiConfig {
-  const result = ApiConfigSchema.safeParse(env);
+  // Railway (and many PaaS) expose the port as PORT. Prefer explicit API_PORT if set.
+  const normalizedEnv: Record<string, string | undefined> = { ...env };
+  if (!normalizedEnv.API_PORT && normalizedEnv.PORT) {
+    normalizedEnv.API_PORT = normalizedEnv.PORT;
+  }
+
+  const result = ApiConfigSchema.safeParse(normalizedEnv);
   if (!result.success) {
     const errors = result.error.issues.map(
       (issue) => `  - ${issue.path.join('.')}: ${issue.message}`

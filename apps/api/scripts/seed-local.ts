@@ -25,8 +25,17 @@ async function loadEnvFile(filePath: string): Promise<void> {
       }
     }
   } catch (err) {
+    // Ignore missing file (supports Railway where env is provided via vars)
+    if (
+      err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      (err as { code?: string }).code === 'ENOENT'
+    ) {
+      return;
+    }
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`WARN: Failed to load .env file at ${filePath}: ${msg}`);
+    console.warn(`WARN: Failed to load env file at ${filePath}: ${msg}`);
   }
 }
 
@@ -277,6 +286,7 @@ async function createRemixModule(params: {
 
 async function main(): Promise<void> {
   await loadEnvFile(path.resolve(process.cwd(), '.env'));
+  await loadEnvFile(path.resolve(process.cwd(), '.env.railway'));
 
   const config = getConfig();
   const pool = getPool();

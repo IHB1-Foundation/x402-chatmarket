@@ -414,6 +414,7 @@ Working monorepo with the required structure
 docker-compose for postgres/redis + migrations
 Deployed staging URLs (web + api)
   - Web is deployed on Vercel with Root Directory set to `apps/web`
+  - Backend (API + Postgres + Redis) is deployed on Railway (see `DEPLOY.md`)
 Demo script + testnet funding instructions
 TICKET.md fully updated (DONE/BLOCKED with notes)
 (Optional) pitch deck + short demo video

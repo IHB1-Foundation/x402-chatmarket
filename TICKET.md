@@ -854,6 +854,7 @@
       - Included Docker deployment instructions
       - Added cloud platform recommendations (Railway, Vercel, etc.)
       - For Vercel, deploy the Next.js app with Root Directory set to `apps/web`
+      - For Railway, deploy backend services and use `DEPLOY.md` (API loads `apps/api/.env.railway` for demo defaults)
       - Actual deployment requires cloud credentials (deferred to user)
     - Documentation covers:
       - Prerequisites and installation

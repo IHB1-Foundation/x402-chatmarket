@@ -12,6 +12,7 @@ pnpm demo
 ```
 
 Deployment note: the web app is a Next.js project under `apps/web` and is intended to be deployed on Vercel with the Vercel project Root Directory set to `apps/web` (see `README.md`).
+Backend deployment note: for a hosted demo, deploy the API + Postgres + Redis on Railway (see `DEPLOY.md`).
 
 This will:
 1. Start Docker infrastructure (Postgres, Redis)
