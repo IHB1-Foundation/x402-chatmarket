@@ -71,9 +71,13 @@ export default function X402PocPage(): React.ReactElement {
     const validBefore = validAfter + requirements.maxTimeoutSeconds;
     const nonce = Date.now();
 
+    // Some backends may return mixed-case addresses that are not EIP-55 checksummed.
+    // viem rejects those, so normalize to lowercase (valid, non-checksummed form).
+    const payTo = requirements.payTo.toLowerCase() as `0x${string}`;
+
     const messageToSign = {
       from: address,
-      to: requirements.payTo as `0x${string}`,
+      to: payTo,
       value: BigInt(requirements.maxAmountRequired),
       validAfter: BigInt(validAfter),
       validBefore: BigInt(validBefore),
@@ -96,13 +100,13 @@ export default function X402PocPage(): React.ReactElement {
       signature,
       payload: {
         from: address,
-        to: requirements.payTo,
+        to: payTo,
         value: requirements.maxAmountRequired,
         validAfter,
         validBefore,
         nonce,
         network: requirements.network,
-        asset: requirements.asset,
+        asset: requirements.asset.toLowerCase(),
       },
     };
 

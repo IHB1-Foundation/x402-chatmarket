@@ -20,11 +20,19 @@ export function buildPaymentRequirements(
   description: string
 ): PaymentRequirements {
   const config = getConfig();
+
+  const normalizeAddress = (value: string): string => {
+    if (/^0x[a-fA-F0-9]{40}$/.test(value)) return value.toLowerCase();
+    return value;
+  };
+
   return {
     scheme: 'exact',
     network: config.X402_NETWORK,
-    payTo,
-    asset: config.X402_ASSET_CONTRACT || '0x0000000000000000000000000000000000000000',
+    payTo: normalizeAddress(payTo),
+    asset: normalizeAddress(
+      config.X402_ASSET_CONTRACT || '0x0000000000000000000000000000000000000000'
+    ),
     description,
     mimeType: 'application/json',
     maxAmountRequired: amount,

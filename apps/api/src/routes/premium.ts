@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { buildPaymentRequirements, verifyPayment, settlePayment } from '../services/x402.js';
 import { createPayment } from '../repositories/payments.js';
 
-const DEMO_PAY_TO = '0x742d35Cc6634C0532925a3b844Bc9e7595f8bBf5';
+// Lowercase to avoid checksum validation issues in some clients (e.g., viem strict mixed-case checks)
+const DEMO_PAY_TO = '0x742d35cc6634c0532925a3b844bc9e7595f8bbf5';
 const DEMO_PRICE = '10000'; // 0.01 USDC (6 decimals)
 const DEMO_MODULE_ID = 'demo-module';
 
