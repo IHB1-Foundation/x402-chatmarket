@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "prebuild": "pnpm --filter @soulforge/shared build",
     "build": "tsc",
     "start": "node dist/index.js",
     "clean": "rm -rf dist",
