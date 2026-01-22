@@ -1,68 +1,74 @@
-# Cronos x402 Paytech Hackathon — Submission Draft
+# Cronos x402 Paytech Hackathon — SoulForge
 
-## Project Overview (1–2 paragraphs)
-SoulForge is an AI persona + knowledge module marketplace where creators monetize agent capabilities via paywalled API access. Buyers discover modules in a marketplace UI, try a limited free preview, then unlock full responses using an **x402-style HTTP 402 Payment Required** flow that turns a chat request into a programmatic payment + response.
+## One‑liner
+SoulForge is a marketplace where **AI personas + knowledge modules** are sold as **paywalled API capabilities**—unlocked instantly via **x402 (HTTP 402 Payment Required)** wallet payments.
 
-SoulForge also supports **Remix (derivative) modules**: a remix module can call an upstream module at runtime (no data copying) and automatically pay upstream via an **agent wallet**, proving “derivatives generate revenue for originals” using on-chain settlement and transparent payment events (tx hash) for both buyer→remix and remix→upstream.
+## The Problem
+Creators can build high-value AI personas and knowledge bases, but today:
+- **Pay‑per‑use monetization is painful**: subscriptions, logins, and credit cards add friction (especially for “one question” use).
+- **APIs don’t have a native payment handshake**: “pay before compute” is bolted on with custom paywalls.
+- **Derivatives break incentives**: remix/derivative agents can capture value without automatically compensating originals.
 
-## On-Chain Component (Cronos EVM + x402-compatible flow)
-- Network: Cronos EVM (Testnet by default, `chainId=338`)
-- Pay token: devUSDC.e (`X402_ASSET_CONTRACT`)
-- Flow:
-  1) Client calls a paid endpoint without `X-PAYMENT` → server returns `402` + `paymentRequirements`
-  2) Client signs an EIP-712 payment authorization (gasless signature prompt)
-  3) Client retries with `X-PAYMENT` header (base64 payload)
-  4) Server verifies + settles via x402 facilitator (`/verify`, `/settle`)
-  5) Settlement produces an on-chain tx hash (`txHash`), which is stored and displayed in the UI
-- Remix proof: one buyer request can create **two** on-chain settlement events (buyer→remix, remix-agent→upstream).
+## The Solution (What We Built)
+SoulForge makes AI capabilities purchasable like an API call:
+- **Marketplace UX**: creators publish modules (persona + knowledge + price); buyers browse and discover.
+- **Try‑once preview**: buyers can sample a module before paying (limited preview).
+- **x402 paywall**: a paid chat request triggers `402` → wallet “Pay & Send” → full response.
+- **On‑chain receipts**: each payment returns a `txHash` shown in the UI for verifiable settlement.
 
-## Tracks (recommended)
+## Why x402 Matters Here
+AI usage is naturally **per‑request** (a prompt is an API call). x402 turns that into a standard-shaped flow:
+- **No accounts required**: the wallet is the identity and the payment instrument.
+- **Built for automation**: it works for humans *and* for agents (machine‑to‑machine payments).
+- **Enforces “pay before answer”**: the server returns content only after payment is verified/settled.
+
+## Why Cronos EVM + On‑Chain Settlement
+We use on‑chain settlement to make payments **verifiable** and **composable**:
+- **Receipts you can audit**: a `txHash` proves the payment happened (and can be shown in the product).
+- **Composable economics**: agent‑to‑agent payments enable Remix modules to pay upstream automatically.
+- **Cronos EVM**: EVM‑compatible network with wallet tooling and testnet stablecoin (`devUSDC.e`) that fits micropayments.
+
+## Key Differentiator: Remix Economics (Derivative‑Pays‑Original)
+SoulForge supports **Remix modules**: a derivative module composes an upstream module at runtime **without copying data**.
+
+When a buyer uses a Remix module, one request can produce **two settlement receipts**:
+1) **Buyer → Remix creator** (the module they chose)
+2) **Remix agent wallet → Upstream creator** (the original capability it depends on)
+
+The UI shows both receipts, proving that **derivatives can automatically generate revenue for originals**.
+
+## Who It’s For
+- **AI creators**: monetize personas/knowledge without building subscriptions or billing.
+- **Product builders**: buy capabilities as APIs (pay only when they’re used).
+- **Agent developers**: compose paid modules with upstream payments baked in.
+
+## Demo (What Judges Should See)
+1) Browse the marketplace and open a module detail page.
+2) Use **Try Once** to show a limited preview.
+3) Click **Paid Chat** and send a message:
+   - first request returns **402 Payment Required**
+   - wallet prompts to authorize payment
+   - retry returns the full AI response
+4) Point out the **on‑chain `txHash`** displayed in the chat UI.
+5) Repeat the paid chat with a **Remix module** and show **two payment receipts** (buyer + upstream).
+
+## Tracks (Recommended)
 - Main Track — x402 Applications (Broad Use Cases)
-- x402 Agentic Finance/Payment Track — Agent-to-agent upstream payments (Remix)
+- x402 Agentic Finance/Payment Track — Agent‑to‑agent upstream payments (Remix)
 
-## Links (fill these in)
+## Links
 - GitHub Repo: <YOUR_GITHUB_REPO_URL>
 - Demo Video: <YOUR_DEMO_VIDEO_URL>
 - Deployed Prototype (Web, Vercel): https://www.soulforgemarket.xyz/ (Vercel Root Directory: `apps/web`)
 - Deployed Prototype (API, Railway): https://api.soulforgemarket.xyz/
 
-## Demo Video Checklist (suggested shots)
-1) Marketplace: browse modules + open a module detail page.
-2) Paid chat attempt: show `402 Payment Required` modal + payment requirements (network/amount).
-3) Wallet action: sign the EIP-712 payment authorization.
-4) Confirmation: show `txHash` displayed in chat UI, then open Cronos Explorer to prove on-chain settlement.
-5) Remix module: run a paid chat on a Remix module and show two payment banners:
-   - Payment Confirmed (buyer→remix)
-   - Upstream Payment (remix→upstream)
+## What’s Next (After Hackathon)
+- **Session passes**: reduce repeat signing for frequent users.
+- **Creator analytics**: conversion + revenue insights for pricing iteration.
+- **Royalties**: richer on‑chain splits and cross‑module revenue graphs.
 
-## How to Run (Local)
-### A) Fast local demo (mock payments; no on-chain)
-```bash
-pnpm demo
-```
-
-### B) On-chain demo (Cronos Testnet settlement)
-1) Configure env:
-```bash
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-```
-
-2) In `apps/api/.env` set:
-- `X402_MOCK_MODE=false` (or run `pnpm demo:onchain`, which forces it off)
-- `X402_FACILITATOR_BASE_URL=...` (Cronos x402 facilitator base URL)
-- `X402_NETWORK=cronos-testnet`
-- `X402_CHAIN_ID=338`
-- `X402_ASSET_CONTRACT=<devUSDC.e contract>`
-
-3) Run:
-```bash
-pnpm demo:onchain
-```
-
-4) Wallet setup:
-- Add Cronos Testnet (RPC: https://evm-t3.cronos.org, Chain ID: 338)
-- Get devUSDC.e from the faucet: https://faucet.cronos.org
-
-## Notes
-- In on-chain mode, users **sign** the payment authorization in the wallet; the on-chain settlement is **relayed** by the facilitator and returns a transaction hash.
+## Quick Verification (Minimal Technical Info)
+- Network: Cronos EVM (Testnet by default, `chainId=338`)
+- Pay token: devUSDC.e (`X402_ASSET_CONTRACT`)
+- Local demo: `pnpm demo` (mock payments) or `pnpm demo:onchain` (testnet settlement)
+- Runbook: `DEMO_RUNBOOK.md`
