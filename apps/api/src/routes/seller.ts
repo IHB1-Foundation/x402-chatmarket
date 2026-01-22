@@ -994,4 +994,224 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.send({ count: runs.length, runs });
     }
   );
+
+  // ==================== PAYMENTS & ANALYTICS ENDPOINTS ====================
+
+  const PaymentsQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    size: z.coerce.number().int().positive().max(100).default(20),
+    moduleId: z.string().uuid().optional(),
+  });
+
+  // List payments for seller's modules
+  fastify.get<{ Querystring: z.infer<typeof PaymentsQuerySchema> }>(
+    '/api/seller/payments',
+    { preValidation: [fastify.authenticate] },
+    async (
+      request: FastifyRequest<{ Querystring: z.infer<typeof PaymentsQuerySchema> }>,
+      reply: FastifyReply
+    ) => {
+      const user = request.user as { sub: string; address: string; role: string };
+      const pool = getPool();
+
+      const parseResult = PaymentsQuerySchema.safeParse(request.query);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid query parameters',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const { page, size, moduleId } = parseResult.data;
+      const offset = (page - 1) * size;
+
+      // Build the query - only show payments for seller's modules
+      let query = `
+        SELECT p.id, p.module_id, p.payer_wallet, p.pay_to, p.value,
+               p.tx_hash, p.network, p.event, p.error, p.created_at,
+               m.name as module_name
+        FROM payments p
+        JOIN modules m ON p.module_id = m.id
+        WHERE m.owner_user_id = $1
+          AND p.event = 'settled'
+      `;
+      const params: (string | number)[] = [user.sub];
+
+      if (moduleId) {
+        query += ` AND p.module_id = $${params.length + 1}`;
+        params.push(moduleId);
+      }
+
+      query += ` ORDER BY p.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(size, offset);
+
+      const result = await pool.query(query, params);
+
+      // Get total count
+      let countQuery = `
+        SELECT COUNT(*) as total
+        FROM payments p
+        JOIN modules m ON p.module_id = m.id
+        WHERE m.owner_user_id = $1
+          AND p.event = 'settled'
+      `;
+      const countParams: string[] = [user.sub];
+
+      if (moduleId) {
+        countQuery += ` AND p.module_id = $2`;
+        countParams.push(moduleId);
+      }
+
+      const countResult = await pool.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].total, 10);
+
+      return reply.send({
+        payments: result.rows.map((row) => ({
+          id: row.id,
+          moduleId: row.module_id,
+          moduleName: row.module_name,
+          payerWallet: row.payer_wallet,
+          payTo: row.pay_to,
+          value: row.value,
+          txHash: row.tx_hash,
+          network: row.network,
+          event: row.event,
+          error: row.error,
+          createdAt: row.created_at,
+        })),
+        pagination: {
+          page,
+          size,
+          total,
+          totalPages: Math.ceil(total / size),
+        },
+      });
+    }
+  );
+
+  const AnalyticsQuerySchema = z.object({
+    days: z.coerce.number().int().positive().max(90).default(30),
+  });
+
+  // Get analytics/KPIs for seller
+  fastify.get<{ Querystring: z.infer<typeof AnalyticsQuerySchema> }>(
+    '/api/seller/analytics',
+    { preValidation: [fastify.authenticate] },
+    async (
+      request: FastifyRequest<{ Querystring: z.infer<typeof AnalyticsQuerySchema> }>,
+      reply: FastifyReply
+    ) => {
+      const user = request.user as { sub: string; address: string; role: string };
+      const pool = getPool();
+
+      const parseResult = AnalyticsQuerySchema.safeParse(request.query);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: 'Invalid query parameters',
+          details: parseResult.error.issues,
+        });
+      }
+
+      const { days } = parseResult.data;
+
+      // Get all seller's module IDs
+      const modulesResult = await pool.query(
+        'SELECT id FROM modules WHERE owner_user_id = $1',
+        [user.sub]
+      );
+      const moduleIds = modulesResult.rows.map((r) => r.id);
+
+      if (moduleIds.length === 0) {
+        return reply.send({
+          kpis: {
+            totalRevenue7d: '0',
+            totalRevenue30d: '0',
+            paidChatsCount: 0,
+            uniqueBuyers: 0,
+          },
+          revenueTimeseries: [],
+          topModules: [],
+        });
+      }
+
+      // KPIs: Total revenue for 7d and 30d
+      const revenueQuery = `
+        SELECT
+          COALESCE(SUM(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN value::bigint ELSE 0 END), 0) as revenue_7d,
+          COALESCE(SUM(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN value::bigint ELSE 0 END), 0) as revenue_30d,
+          COUNT(DISTINCT CASE WHEN created_at >= NOW() - INTERVAL '${days} days' THEN id END) as paid_chats,
+          COUNT(DISTINCT CASE WHEN created_at >= NOW() - INTERVAL '${days} days' THEN payer_wallet END) as unique_buyers
+        FROM payments
+        WHERE module_id = ANY($1)
+          AND event = 'settled'
+      `;
+      const revenueResult = await pool.query(revenueQuery, [moduleIds]);
+      const kpiRow = revenueResult.rows[0];
+
+      // Revenue timeseries (daily for the past N days)
+      const timeseriesQuery = `
+        SELECT
+          DATE_TRUNC('day', created_at) as date,
+          SUM(value::bigint) as daily_revenue,
+          COUNT(*) as daily_payments
+        FROM payments
+        WHERE module_id = ANY($1)
+          AND event = 'settled'
+          AND created_at >= NOW() - INTERVAL '${days} days'
+        GROUP BY DATE_TRUNC('day', created_at)
+        ORDER BY date ASC
+      `;
+      const timeseriesResult = await pool.query(timeseriesQuery, [moduleIds]);
+
+      // Fill in missing days with zero revenue
+      const timeseries: { date: string; revenue: string; payments: number }[] = [];
+      const now = new Date();
+      const dateMap = new Map(
+        timeseriesResult.rows.map((r) => [
+          new Date(r.date).toISOString().split('T')[0],
+          { revenue: r.daily_revenue.toString(), payments: parseInt(r.daily_payments, 10) },
+        ])
+      );
+
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        const data = dateMap.get(dateStr) || { revenue: '0', payments: 0 };
+        timeseries.push({ date: dateStr, ...data });
+      }
+
+      // Top modules by revenue
+      const topModulesQuery = `
+        SELECT
+          m.id,
+          m.name,
+          COALESCE(SUM(p.value::bigint), 0) as total_revenue,
+          COUNT(p.id) as total_payments
+        FROM modules m
+        LEFT JOIN payments p ON p.module_id = m.id AND p.event = 'settled' AND p.created_at >= NOW() - INTERVAL '${days} days'
+        WHERE m.owner_user_id = $1
+        GROUP BY m.id, m.name
+        ORDER BY total_revenue DESC
+        LIMIT 5
+      `;
+      const topModulesResult = await pool.query(topModulesQuery, [user.sub]);
+
+      return reply.send({
+        kpis: {
+          totalRevenue7d: kpiRow.revenue_7d.toString(),
+          totalRevenue30d: kpiRow.revenue_30d.toString(),
+          paidChatsCount: parseInt(kpiRow.paid_chats, 10),
+          uniqueBuyers: parseInt(kpiRow.unique_buyers, 10),
+        },
+        revenueTimeseries: timeseries,
+        topModules: topModulesResult.rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          totalRevenue: r.total_revenue.toString(),
+          totalPayments: parseInt(r.total_payments, 10),
+        })),
+      });
+    }
+  );
 }
