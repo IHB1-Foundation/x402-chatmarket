@@ -11,6 +11,8 @@ The fastest way to get a working demo:
 pnpm demo
 ```
 
+Deployment note: the web app is a Next.js project under `apps/web` and is intended to be deployed on Vercel with the Vercel project Root Directory set to `apps/web` (see `README.md`).
+
 This will:
 1. Start Docker infrastructure (Postgres, Redis)
 2. Wait for the database to be ready

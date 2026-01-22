@@ -171,7 +171,7 @@
 - **Partners/Investors**: Let's talk about scaling this
 
 **Links:**
-- Live demo: [URL]
+- Live demo (Vercel, Root: `apps/web`): [URL]
 - GitHub: [URL]
 - Contact: [email]
 

@@ -182,6 +182,23 @@ Recommended platforms:
 - **Database**: Neon, Supabase, or Railway PostgreSQL
 - **Redis**: Upstash or Railway Redis
 
+#### Vercel (Web)
+
+This repo is a monorepo. When deploying the Next.js app, set the Vercel project **Root Directory** to `apps/web`.
+
+Recommended Vercel settings:
+- **Framework Preset**: Next.js
+- **Package Manager**: pnpm (required because `apps/web` depends on `@soulforge/shared` via `workspace:*`)
+- **Build Command**: `pnpm --filter @soulforge/shared build && pnpm build`
+
+Note: deploy the Fastify API separately (it lives in `apps/api`) and point the web app at it via `NEXT_PUBLIC_API_URL`.
+
+Required env vars (set in Vercel Project → Settings → Environment Variables):
+- `NEXT_PUBLIC_API_URL` (your deployed API base URL)
+- `NEXT_PUBLIC_APP_URL` (your deployed web URL)
+- `NEXT_PUBLIC_X402_NETWORK`, `NEXT_PUBLIC_X402_CHAIN_ID`
+- `NEXT_PUBLIC_X402_ASSET_CONTRACT` (payment token, used for wallet balance display)
+
 ## Demo Script (3 minutes)
 
 1. **Show Marketplace** (30s)

@@ -413,6 +413,7 @@ Working monorepo with the required structure
 .env.example + clear README for local run and deployment
 docker-compose for postgres/redis + migrations
 Deployed staging URLs (web + api)
+  - Web is deployed on Vercel with Root Directory set to `apps/web`
 Demo script + testnet funding instructions
 TICKET.md fully updated (DONE/BLOCKED with notes)
 (Optional) pitch deck + short demo video
