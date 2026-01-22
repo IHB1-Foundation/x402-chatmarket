@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getConfig } from './config.js';
 import { checkDbConnection, checkPgvector } from './lib/db.js';
+import { ensureDbSchema } from './lib/schema.js';
 import { checkRedisConnection } from './lib/redis.js';
 import { authPlugin } from './plugins/auth.js';
 import { observabilityPlugin } from './plugins/observability.js';
@@ -58,6 +59,7 @@ await loadEnvFile(path.resolve(process.cwd(), '.env.railway'));
 
 // Validate config early - will exit if invalid
 const config = getConfig();
+await ensureDbSchema();
 
 const fastify = Fastify({
   logger: true,
