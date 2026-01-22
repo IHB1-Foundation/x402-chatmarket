@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getConfig } from './config.js';
 import { checkDbConnection, checkPgvector } from './lib/db.js';
+import { ensureDemoSeed } from './lib/demo-seed.js';
 import { ensureDbSchema } from './lib/schema.js';
 import { checkRedisConnection } from './lib/redis.js';
 import { authPlugin } from './plugins/auth.js';
@@ -61,6 +62,10 @@ await loadEnvFile(path.resolve(process.cwd(), '.env.railway'));
 const config = getConfig();
 const schemaInit = await ensureDbSchema();
 console.log(`DB schema ensured (method=${schemaInit.method}).`);
+const demoSeed = await ensureDemoSeed();
+if (demoSeed.attempted) {
+  console.log(`Demo seed: ${demoSeed.reason}`);
+}
 
 const fastify = Fastify({
   logger: true,
@@ -85,6 +90,7 @@ fastify.get('/health/version', async () => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     schema: schemaInit,
+    seed: demoSeed,
     git: {
       sha: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
       branch: process.env.RAILWAY_GIT_BRANCH ?? null,

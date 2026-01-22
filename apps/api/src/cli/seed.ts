@@ -285,7 +285,7 @@ async function createRemixModule(params: {
   return inserted.rows[0].id as string;
 }
 
-export async function seed(): Promise<void> {
+export async function seed(options: { closePool?: boolean } = {}): Promise<void> {
   await loadEnvFile(path.resolve(process.cwd(), '.env'));
   await loadEnvFile(path.resolve(process.cwd(), '.env.railway'));
 
@@ -658,7 +658,10 @@ export async function seed(): Promise<void> {
   console.log('All modules have eval scores assigned.');
   console.log('\nTo view the marketplace, visit: http://localhost:3000/marketplace');
 
-  await pool.end();
+  const closePool = options.closePool ?? true;
+  if (closePool) {
+    await pool.end();
+  }
 }
 
 const isDirectRun = (() => {
