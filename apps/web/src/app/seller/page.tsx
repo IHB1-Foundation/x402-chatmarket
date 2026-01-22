@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
 import { useSellerAuth } from '../../hooks/useSellerAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -111,6 +111,7 @@ function KPICard({ label, value, subtext }: { label: string; value: string; subt
 
 export default function SellerDashboard() {
   const { isConnected, address } = useAccount();
+  const { connectAsync, connectors, isPending: isConnecting } = useConnect();
   const { isAuthenticated, isLoading: authLoading, error: authError, login, logout, getAuthHeaders, user } =
     useSellerAuth();
   const { showToast } = useToast();
@@ -212,18 +213,92 @@ export default function SellerDashboard() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleConnect = async () => {
+    const metaMaskConnector = connectors[0];
+    if (!metaMaskConnector) {
+      showToast('MetaMask connector not available', 'error');
+      return;
+    }
+
+    try {
+      await connectAsync({ connector: metaMaskConnector });
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to connect MetaMask', 'error');
+    }
+  };
+
   // Not connected
   if (!isConnected) {
     return (
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-4">Seller Dashboard</h1>
-        <p className="text-[var(--color-text-secondary)] mb-8">
-          Connect your MetaMask wallet using the button in the header to access the seller dashboard.
-        </p>
-        <Link href="/" className="inline-block mt-8 text-[var(--color-primary)]">
-          &larr; Back to Home
-        </Link>
-      </main>
+      <div className="bg-gradient-to-b from-[var(--color-primary-light)]/60 to-[var(--color-background)]">
+        <div className="container-narrow py-10 md:py-14 animate-fade-in">
+          <div className="text-center">
+            <Badge variant="primary" className="mb-4">
+              Seller
+            </Badge>
+            <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text-primary)]">
+              Seller Dashboard
+            </h1>
+            <p className="mt-3 text-[var(--color-text-secondary)]">
+              Connect your wallet to create modules, set pricing, and track revenue.
+            </p>
+          </div>
+
+          <Card variant="elevated" padding="lg" className="mt-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                  Connect MetaMask to continue
+                </h2>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  You&apos;ll be asked to sign a message (SIWE). No gas required.
+                </p>
+              </div>
+              <Button size="lg" onClick={handleConnect} isLoading={isConnecting}>
+                Connect MetaMask
+              </Button>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                {
+                  title: 'Create',
+                  desc: 'Draft new modules and publish when ready.',
+                },
+                {
+                  title: 'Monetize',
+                  desc: 'Set pay-per-message or per-session pricing.',
+                },
+                {
+                  title: 'Track',
+                  desc: 'See payments and revenue analytics in one place.',
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="p-4 rounded-[var(--radius-lg)] bg-[var(--color-background)] border border-[var(--color-border)]"
+                >
+                  <p className="font-semibold text-[var(--color-text-primary)]">{item.title}</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link href="/marketplace">
+              <Button variant="secondary">Browse Marketplace</Button>
+            </Link>
+            <Link href="/">
+              <Button variant="ghost">Back to Home</Button>
+            </Link>
+          </div>
+
+          <p className="mt-6 text-center text-xs text-[var(--color-text-tertiary)]">
+            Tip: If MetaMask doesn&apos;t pop up, make sure the extension is unlocked, then try again.
+          </p>
+        </div>
+      </div>
     );
   }
 
