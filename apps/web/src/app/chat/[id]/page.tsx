@@ -363,11 +363,11 @@ export default function ChatPage() {
                   <div
                     className={`
                       max-w-[70%] px-4 py-3 rounded-[var(--radius-lg)]
-                      ${msg.role === 'user'
-                        ? 'bg-[var(--color-primary)] text-white'
-                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)]'
-                      }
-                    `}
+	                      ${msg.role === 'user'
+	                        ? 'bg-[var(--color-primary)] text-[var(--color-text-inverse)]'
+	                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)]'
+	                      }
+	                    `}
                   >
                     {msg.content}
                   </div>

@@ -34,10 +34,10 @@ export function useToast() {
 }
 
 const typeStyles: Record<ToastType, string> = {
-  success: 'bg-[var(--color-success)] text-white',
-  error: 'bg-[var(--color-error)] text-white',
+  success: 'bg-[var(--color-success)] text-[var(--color-text-inverse)]',
+  error: 'bg-[var(--color-error)] text-[var(--color-text-inverse)]',
   warning: 'bg-[var(--color-warning)] text-[var(--color-text-inverse)]',
-  info: 'bg-[var(--color-primary)] text-white',
+  info: 'bg-[var(--color-primary)] text-[var(--color-text-inverse)]',
 };
 
 const typeIcons: Record<ToastType, ReactNode> = {

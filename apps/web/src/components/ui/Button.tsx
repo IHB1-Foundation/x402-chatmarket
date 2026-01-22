@@ -36,8 +36,8 @@ const variantStyles: Record<ButtonVariant, string> = {
     hover:text-[var(--color-text-primary)]
   `,
   danger: `
-    bg-[var(--color-error)] text-white
-    hover:bg-[#dc2626]
+    bg-[var(--color-error)] text-[var(--color-text-inverse)]
+    hover:bg-[#dc2626] hover:text-white
     active:scale-[0.98]
   `,
 };

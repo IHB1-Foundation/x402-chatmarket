@@ -110,6 +110,25 @@
   *:focus-visible {
     @apply outline-2 outline-offset-2 outline-[var(--color-primary)];
   }
+
+  /* Form controls (ensure readable in light/dark) */
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='number'],
+  input[type='search'],
+  input[type='url'],
+  input[type='tel'],
+  input:not([type]),
+  textarea,
+  select {
+    @apply bg-[var(--color-surface)] text-[var(--color-text-primary)];
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-[var(--color-text-tertiary)];
+  }
 }
 
 /* Custom utilities */

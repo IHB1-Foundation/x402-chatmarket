@@ -112,7 +112,7 @@ export default function Home() {
             ].map((item) => (
               <Card key={item.step} variant="bordered" padding="lg" className="text-center">
                 <div className="text-4xl mb-4">{item.icon}</div>
-                <div className="w-8 h-8 mx-auto mb-3 bg-[var(--color-primary)] text-white rounded-full flex items-center justify-center font-bold text-sm">
+                <div className="w-8 h-8 mx-auto mb-3 bg-[var(--color-primary)] text-[var(--color-text-inverse)] rounded-full flex items-center justify-center font-bold text-sm">
                   {item.step}
                 </div>
                 <h3 className="font-semibold text-[var(--color-text-primary)] mb-2">
@@ -164,7 +164,7 @@ export default function Home() {
                     padding="none"
                     className="h-full overflow-hidden ring-2 ring-[var(--color-primary)]/30"
                   >
-                    <div className="bg-[var(--color-primary)] text-white text-xs font-medium px-3 py-1 text-center">
+                    <div className="bg-[var(--color-primary)] text-[var(--color-text-inverse)] text-xs font-medium px-3 py-1 text-center">
                       Featured
                     </div>
                     <div className="p-5">

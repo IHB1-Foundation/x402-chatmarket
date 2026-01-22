@@ -46,7 +46,7 @@ export default function CreateModulePage() {
       <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
         <h1>Create Module</h1>
         <p>Please sign in first.</p>
-        <Link href="/seller" style={{ color: '#0070f3' }}>
+        <Link href="/seller" style={{ color: 'var(--color-primary)' }}>
           Go to Seller Dashboard
         </Link>
       </main>
@@ -150,7 +150,7 @@ export default function CreateModulePage() {
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '700px', margin: '0 auto' }}>
-      <Link href="/seller" style={{ color: '#0070f3', display: 'inline-block', marginBottom: '1rem' }}>
+      <Link href="/seller" style={{ color: 'var(--color-primary)', display: 'inline-block', marginBottom: '1rem' }}>
         &larr; Back to Dashboard
       </Link>
 
@@ -158,18 +158,18 @@ export default function CreateModulePage() {
       <div
         style={{
           padding: '1rem',
-          backgroundColor: '#f5faff',
-          border: '1px solid #d0e5ff',
+          backgroundColor: 'var(--color-primary-light)',
+          border: '1px solid var(--color-border)',
           borderRadius: '8px',
           margin: '0.75rem 0 1.5rem',
-          color: '#333',
+          color: 'var(--color-text-primary)',
           fontSize: '0.9rem',
           lineHeight: 1.4,
         }}
       >
         <strong>Base module</strong> is standalone: it uses your persona + knowledge, and buyers pay your module directly.
         Want a derivative that builds on an existing module and pays upstream at runtime?{' '}
-        <Link href="/seller/remix" style={{ color: '#0070f3' }}>
+        <Link href="/seller/remix" style={{ color: 'var(--color-primary)' }}>
           Create a Remix
         </Link>
         .
@@ -184,8 +184,8 @@ export default function CreateModulePage() {
               flex: 1,
               padding: '0.5rem',
               textAlign: 'center',
-              backgroundColor: i <= currentStepIndex ? '#0070f3' : '#e0e0e0',
-              color: i <= currentStepIndex ? '#fff' : '#666',
+              backgroundColor: i <= currentStepIndex ? 'var(--color-primary)' : 'var(--color-border)',
+              color: i <= currentStepIndex ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
               borderRadius: '4px',
               fontSize: '0.875rem',
               cursor: i < currentStepIndex ? 'pointer' : 'default',
@@ -198,7 +198,15 @@ export default function CreateModulePage() {
       </div>
 
       {error && (
-        <div style={{ padding: '1rem', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '4px', marginBottom: '1rem' }}>
+        <div
+          style={{
+            padding: '1rem',
+            backgroundColor: 'var(--color-error-light)',
+            color: 'var(--color-error)',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+          }}
+        >
           {error}
         </div>
       )}
@@ -214,7 +222,7 @@ export default function CreateModulePage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My AI Assistant"
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
@@ -224,7 +232,7 @@ export default function CreateModulePage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="A helpful AI assistant that..."
               rows={4}
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
@@ -234,7 +242,7 @@ export default function CreateModulePage() {
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="assistant, helpful, coding"
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
             />
           </div>
           <button
@@ -242,8 +250,8 @@ export default function CreateModulePage() {
             disabled={!name.trim()}
             style={{
               padding: '0.75rem 1.5rem',
-              backgroundColor: name.trim() ? '#0070f3' : '#ccc',
-              color: '#fff',
+              backgroundColor: name.trim() ? 'var(--color-primary)' : 'var(--color-border)',
+              color: name.trim() ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
               border: 'none',
               borderRadius: '4px',
               cursor: name.trim() ? 'pointer' : 'not-allowed',
@@ -258,7 +266,7 @@ export default function CreateModulePage() {
       {step === 'persona' && (
         <div>
           <h2>Persona Prompt</h2>
-          <p style={{ color: '#666', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
             Define the personality, style, and constraints for your AI module.
           </p>
           <div style={{ marginBottom: '1rem' }}>
@@ -268,13 +276,13 @@ export default function CreateModulePage() {
               onChange={(e) => setPersonaPrompt(e.target.value)}
               placeholder="You are a helpful assistant that specializes in..."
               rows={8}
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px', fontFamily: 'monospace' }}
             />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               onClick={() => setStep('basics')}
-              style={{ padding: '0.75rem 1.5rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
+              style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--color-border)', borderRadius: '4px', cursor: 'pointer' }}
             >
               Back
             </button>
@@ -282,8 +290,8 @@ export default function CreateModulePage() {
               onClick={() => setStep('knowledge')}
               style={{
                 padding: '0.75rem 1.5rem',
-                backgroundColor: '#0070f3',
-                color: '#fff',
+                backgroundColor: 'var(--color-primary)',
+                color: 'var(--color-text-inverse)',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
@@ -299,17 +307,25 @@ export default function CreateModulePage() {
       {step === 'knowledge' && (
         <div>
           <h2>Knowledge Base (Q&A)</h2>
-          <p style={{ color: '#666', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
             Add question-answer pairs that your module should know. You can add more knowledge later.
           </p>
           {qaItems.map((qa, index) => (
-            <div key={index} style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+            <div
+              key={index}
+              style={{
+                marginBottom: '1rem',
+                padding: '1rem',
+                backgroundColor: 'var(--color-background-secondary)',
+                borderRadius: '4px',
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <strong>Q&A #{index + 1}</strong>
                 {qaItems.length > 1 && (
                   <button
                     onClick={() => removeQAItem(index)}
-                    style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
+                    style={{ color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     Remove
                   </button>
@@ -320,14 +336,14 @@ export default function CreateModulePage() {
                 value={qa.question}
                 onChange={(e) => updateQAItem(index, 'question', e.target.value)}
                 placeholder="Question..."
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '0.5rem' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: '4px', marginBottom: '0.5rem' }}
               />
               <textarea
                 value={qa.answer}
                 onChange={(e) => updateQAItem(index, 'answer', e.target.value)}
                 placeholder="Answer..."
                 rows={3}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
               />
             </div>
           ))}
@@ -335,7 +351,8 @@ export default function CreateModulePage() {
             onClick={addQAItem}
             style={{
               padding: '0.5rem 1rem',
-              backgroundColor: '#e0e0e0',
+              backgroundColor: 'var(--color-border)',
+              color: 'var(--color-text-primary)',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
@@ -347,7 +364,7 @@ export default function CreateModulePage() {
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               onClick={() => setStep('persona')}
-              style={{ padding: '0.75rem 1.5rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
+              style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--color-border)', borderRadius: '4px', cursor: 'pointer' }}
             >
               Back
             </button>
@@ -355,8 +372,8 @@ export default function CreateModulePage() {
               onClick={() => setStep('pricing')}
               style={{
                 padding: '0.75rem 1.5rem',
-                backgroundColor: '#0070f3',
-                color: '#fff',
+                backgroundColor: 'var(--color-primary)',
+                color: 'var(--color-text-inverse)',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
@@ -377,7 +394,7 @@ export default function CreateModulePage() {
             <select
               value={pricingMode}
               onChange={(e) => setPricingMode(e.target.value as 'per_message' | 'per_session')}
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
             >
               <option value="per_message">Per Message</option>
               <option value="per_session">Per Session</option>
@@ -393,11 +410,11 @@ export default function CreateModulePage() {
               onChange={(e) => setPriceAmount(e.target.value)}
               min="0.001"
               step="0.001"
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
             />
           </div>
           {pricingMode === 'per_session' && (
-            <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+            <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: 'var(--color-background-secondary)', borderRadius: '4px' }}>
               <h3 style={{ margin: '0 0 1rem' }}>Session Policy</h3>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
@@ -407,7 +424,7 @@ export default function CreateModulePage() {
                     value={sessionMinutes}
                     onChange={(e) => setSessionMinutes(e.target.value)}
                     min="1"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -417,7 +434,7 @@ export default function CreateModulePage() {
                     value={sessionCredits}
                     onChange={(e) => setSessionCredits(e.target.value)}
                     min="1"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
                   />
                 </div>
               </div>
@@ -430,16 +447,16 @@ export default function CreateModulePage() {
               value={payTo}
               onChange={(e) => setPayTo(e.target.value)}
               placeholder="0x..."
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '4px', fontFamily: 'monospace' }}
             />
-            <p style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
               Payments will be sent to this address
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               onClick={() => setStep('knowledge')}
-              style={{ padding: '0.75rem 1.5rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
+              style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--color-border)', borderRadius: '4px', cursor: 'pointer' }}
             >
               Back
             </button>
@@ -448,8 +465,8 @@ export default function CreateModulePage() {
               disabled={!payTo.match(/^0x[a-fA-F0-9]{40}$/)}
               style={{
                 padding: '0.75rem 1.5rem',
-                backgroundColor: payTo.match(/^0x[a-fA-F0-9]{40}$/) ? '#0070f3' : '#ccc',
-                color: '#fff',
+                backgroundColor: payTo.match(/^0x[a-fA-F0-9]{40}$/) ? 'var(--color-primary)' : 'var(--color-border)',
+                color: payTo.match(/^0x[a-fA-F0-9]{40}$/) ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: payTo.match(/^0x[a-fA-F0-9]{40}$/) ? 'pointer' : 'not-allowed',
@@ -465,39 +482,39 @@ export default function CreateModulePage() {
       {step === 'review' && (
         <div>
           <h2>Review & Create</h2>
-          <div style={{ padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '4px', marginBottom: '1rem' }}>
+          <div style={{ padding: '1rem', backgroundColor: 'var(--color-background-secondary)', borderRadius: '4px', marginBottom: '1rem' }}>
             <h3 style={{ margin: '0 0 0.5rem' }}>{name}</h3>
-            <p style={{ margin: '0 0 1rem', color: '#666' }}>{description || 'No description'}</p>
+            <p style={{ margin: '0 0 1rem', color: 'var(--color-text-secondary)' }}>{description || 'No description'}</p>
             <table style={{ width: '100%', fontSize: '0.875rem' }}>
               <tbody>
                 <tr>
-                  <td style={{ padding: '0.5rem 0', color: '#666' }}>Tags</td>
+                  <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Tags</td>
                   <td>{tags || 'None'}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '0.5rem 0', color: '#666' }}>Pricing</td>
+                  <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Pricing</td>
                   <td>
                     ${priceAmount} / {pricingMode === 'per_message' ? 'message' : 'session'}
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '0.5rem 0', color: '#666' }}>Q&A Items</td>
+                  <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Q&A Items</td>
                   <td>{qaItems.filter((q) => q.question.trim()).length}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '0.5rem 0', color: '#666' }}>Pay To</td>
+                  <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Pay To</td>
                   <td style={{ fontFamily: 'monospace' }}>{payTo}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <p style={{ color: '#666', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
             Your module will be created as a <strong>draft</strong>. You can publish it after reviewing.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               onClick={() => setStep('pricing')}
-              style={{ padding: '0.75rem 1.5rem', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
+              style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--color-border)', borderRadius: '4px', cursor: 'pointer' }}
             >
               Back
             </button>
@@ -506,8 +523,8 @@ export default function CreateModulePage() {
               disabled={isSubmitting}
               style={{
                 padding: '0.75rem 1.5rem',
-                backgroundColor: isSubmitting ? '#ccc' : '#2e7d32',
-                color: '#fff',
+                backgroundColor: isSubmitting ? 'var(--color-border)' : 'var(--color-success)',
+                color: isSubmitting ? 'var(--color-text-secondary)' : 'var(--color-text-inverse)',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',

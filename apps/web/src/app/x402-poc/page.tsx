@@ -223,10 +223,10 @@ export default function X402PocPage(): React.ReactElement {
                     className={`
                       w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
                       transition-all duration-300
-                      ${status === 'completed' ? 'bg-[var(--color-success)] text-white' : ''}
-                      ${status === 'active' ? 'bg-[var(--color-primary)] text-white animate-pulse-subtle' : ''}
+                      ${status === 'completed' ? 'bg-[var(--color-success)] text-[var(--color-text-inverse)]' : ''}
+                      ${status === 'active' ? 'bg-[var(--color-primary)] text-[var(--color-text-inverse)] animate-pulse-subtle' : ''}
                       ${status === 'upcoming' ? 'bg-[var(--color-border)] text-[var(--color-text-tertiary)]' : ''}
-                      ${status === 'error' ? 'bg-[var(--color-error)] text-white' : ''}
+                      ${status === 'error' ? 'bg-[var(--color-error)] text-[var(--color-text-inverse)]' : ''}
                     `}
                   >
                     {status === 'completed' ? '✓' : status === 'error' ? '✗' : step.icon}

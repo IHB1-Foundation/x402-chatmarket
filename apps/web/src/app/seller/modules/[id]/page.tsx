@@ -243,7 +243,7 @@ export default function ModuleDetailPage() {
     return (
       <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
         <p>Please sign in first.</p>
-        <Link href="/seller" style={{ color: '#0070f3' }}>
+        <Link href="/seller" style={{ color: 'var(--color-primary)' }}>
           Go to Seller Dashboard
         </Link>
       </main>
@@ -261,18 +261,18 @@ export default function ModuleDetailPage() {
   if (error || !module) {
     return (
       <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-        <Link href="/seller" style={{ color: '#0070f3' }}>
+        <Link href="/seller" style={{ color: 'var(--color-primary)' }}>
           &larr; Back to Dashboard
         </Link>
         <h1>Error</h1>
-        <p style={{ color: 'red' }}>{error || 'Module not found'}</p>
+        <p style={{ color: 'var(--color-error)' }}>{error || 'Module not found'}</p>
       </main>
     );
   }
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-      <Link href="/seller" style={{ color: '#0070f3', display: 'inline-block', marginBottom: '1rem' }}>
+      <Link href="/seller" style={{ color: 'var(--color-primary)', display: 'inline-block', marginBottom: '1rem' }}>
         &larr; Back to Dashboard
       </Link>
 
@@ -285,8 +285,17 @@ export default function ModuleDetailPage() {
               padding: '0.25rem 0.75rem',
               borderRadius: '4px',
               backgroundColor:
-                module.status === 'published' ? '#e8f5e9' : module.status === 'blocked' ? '#ffebee' : '#fff3e0',
-              color: module.status === 'published' ? '#2e7d32' : module.status === 'blocked' ? '#c62828' : '#ef6c00',
+                module.status === 'published'
+                  ? 'var(--color-success-light)'
+                  : module.status === 'blocked'
+                    ? 'var(--color-error-light)'
+                    : 'var(--color-warning-light)',
+              color:
+                module.status === 'published'
+                  ? 'var(--color-success)'
+                  : module.status === 'blocked'
+                    ? 'var(--color-error)'
+                    : 'var(--color-warning)',
             }}
           >
             {module.status}
@@ -299,8 +308,8 @@ export default function ModuleDetailPage() {
               disabled={actionLoading}
               style={{
                 padding: '0.5rem 1rem',
-                backgroundColor: '#2e7d32',
-                color: '#fff',
+                backgroundColor: 'var(--color-success)',
+                color: 'var(--color-text-inverse)',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: actionLoading ? 'not-allowed' : 'pointer',
@@ -315,8 +324,8 @@ export default function ModuleDetailPage() {
                 href={`/marketplace/${module.id}`}
                 style={{
                   padding: '0.5rem 1rem',
-                  backgroundColor: '#0070f3',
-                  color: '#fff',
+                  backgroundColor: 'var(--color-primary)',
+                  color: 'var(--color-text-inverse)',
                   borderRadius: '4px',
                   textDecoration: 'none',
                 }}
@@ -328,7 +337,7 @@ export default function ModuleDetailPage() {
                 disabled={actionLoading}
                 style={{
                   padding: '0.5rem 1rem',
-                  border: '1px solid #ddd',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '4px',
                   cursor: actionLoading ? 'not-allowed' : 'pointer',
                 }}
@@ -340,7 +349,9 @@ export default function ModuleDetailPage() {
         </div>
       </div>
 
-      <p style={{ color: '#666', marginBottom: '1.5rem' }}>{module.description || 'No description'}</p>
+      <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>
+        {module.description || 'No description'}
+      </p>
 
       {/* Tags */}
       {module.tags.length > 0 && (
@@ -350,7 +361,7 @@ export default function ModuleDetailPage() {
               key={tag}
               style={{
                 display: 'inline-block',
-                backgroundColor: '#f0f0f0',
+                backgroundColor: 'var(--color-background-secondary)',
                 padding: '0.25rem 0.5rem',
                 borderRadius: '4px',
                 marginRight: '0.5rem',
@@ -364,38 +375,38 @@ export default function ModuleDetailPage() {
       )}
 
       {/* Module Details */}
-      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
         <h2>Module Details</h2>
         <table style={{ width: '100%', fontSize: '0.875rem' }}>
           <tbody>
             <tr>
-              <td style={{ padding: '0.5rem 0', color: '#666', width: '150px' }}>Pricing</td>
+              <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)', width: '150px' }}>Pricing</td>
               <td>{formatPrice(module.priceAmount, module.pricingMode)}</td>
             </tr>
             {module.sessionPolicy && (
               <tr>
-                <td style={{ padding: '0.5rem 0', color: '#666' }}>Session Policy</td>
+                <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Session Policy</td>
                 <td>
                   {module.sessionPolicy.minutes} minutes / {module.sessionPolicy.messageCredits} messages
                 </td>
               </tr>
             )}
             <tr>
-              <td style={{ padding: '0.5rem 0', color: '#666' }}>Pay To</td>
+              <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Pay To</td>
               <td style={{ fontFamily: 'monospace' }}>{module.payTo}</td>
             </tr>
             <tr>
-              <td style={{ padding: '0.5rem 0', color: '#666' }}>Network</td>
+              <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Network</td>
               <td>{module.network}</td>
             </tr>
             {module.evalScore !== null && (
               <tr>
-                <td style={{ padding: '0.5rem 0', color: '#666' }}>Eval Score</td>
+                <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Eval Score</td>
                 <td>{module.evalScore}/10</td>
               </tr>
             )}
             <tr>
-              <td style={{ padding: '0.5rem 0', color: '#666' }}>Created</td>
+              <td style={{ padding: '0.5rem 0', color: 'var(--color-text-secondary)' }}>Created</td>
               <td>{new Date(module.createdAt).toLocaleString()}</td>
             </tr>
           </tbody>
@@ -403,11 +414,11 @@ export default function ModuleDetailPage() {
       </div>
 
       {/* Persona Prompt */}
-      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
         <h2>Persona Prompt</h2>
         <pre
           style={{
-            backgroundColor: '#f5f5f5',
+            backgroundColor: 'var(--color-background-secondary)',
             padding: '1rem',
             borderRadius: '4px',
             whiteSpace: 'pre-wrap',
@@ -421,10 +432,10 @@ export default function ModuleDetailPage() {
       </div>
 
       {/* Knowledge Documents */}
-      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: '1.5rem' }}>
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
         <h2>Knowledge Documents ({documents.length})</h2>
         {documents.length === 0 ? (
-          <p style={{ color: '#666' }}>No knowledge documents added yet.</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>No knowledge documents added yet.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {documents.slice(0, 10).map((doc) => (
@@ -432,28 +443,30 @@ export default function ModuleDetailPage() {
                 key={doc.id}
                 style={{
                   padding: '0.75rem',
-                  backgroundColor: '#f9f9f9',
+                  backgroundColor: 'var(--color-background-secondary)',
                   borderRadius: '4px',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                   <strong style={{ fontSize: '0.875rem' }}>{doc.title}</strong>
-                  <span style={{ fontSize: '0.75rem', color: '#666' }}>{doc.sourceType}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{doc.sourceType}</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#666' }}>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
                   {doc.content.length > 100 ? `${doc.content.slice(0, 100)}...` : doc.content}
                 </p>
               </div>
             ))}
             {documents.length > 10 && (
-              <p style={{ color: '#666', fontSize: '0.875rem' }}>...and {documents.length - 10} more</p>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                ...and {documents.length - 10} more
+              </p>
             )}
           </div>
         )}
       </div>
 
       {/* Eval Section */}
-      <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>Evaluation</h2>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -461,7 +474,7 @@ export default function ModuleDetailPage() {
               onClick={() => setShowAddEvalCase(true)}
               style={{
                 padding: '0.5rem 1rem',
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'var(--color-border)',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
@@ -474,8 +487,8 @@ export default function ModuleDetailPage() {
               disabled={evalRunning || evalCases.length === 0}
               style={{
                 padding: '0.5rem 1rem',
-                backgroundColor: evalCases.length > 0 ? '#2e7d32' : '#ccc',
-                color: '#fff',
+                backgroundColor: evalCases.length > 0 ? 'var(--color-success)' : 'var(--color-border)',
+                color: evalCases.length > 0 ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: evalCases.length > 0 ? 'pointer' : 'not-allowed',
@@ -491,7 +504,12 @@ export default function ModuleDetailPage() {
           <div
             style={{
               padding: '1rem',
-              backgroundColor: latestEvalRun.score >= 7 ? '#e8f5e9' : latestEvalRun.score >= 4 ? '#fff3e0' : '#ffebee',
+              backgroundColor:
+                latestEvalRun.score >= 7
+                  ? 'var(--color-success-light)'
+                  : latestEvalRun.score >= 4
+                    ? 'var(--color-warning-light)'
+                    : 'var(--color-error-light)',
               borderRadius: '8px',
               marginBottom: '1rem',
             }}
@@ -499,11 +517,11 @@ export default function ModuleDetailPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong style={{ fontSize: '1.5rem' }}>{latestEvalRun.score}/10</strong>
-                <span style={{ marginLeft: '0.5rem', color: '#666' }}>
+                <span style={{ marginLeft: '0.5rem', color: 'var(--color-text-secondary)' }}>
                   ({latestEvalRun.passedCases}/{latestEvalRun.totalCases} passed)
                 </span>
               </div>
-              <span style={{ fontSize: '0.875rem', color: '#666' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
                 {new Date(latestEvalRun.createdAt).toLocaleString()}
               </span>
             </div>
@@ -511,7 +529,7 @@ export default function ModuleDetailPage() {
             {/* Show failed cases */}
             {latestEvalRun.details.filter((d) => !d.passed).length > 0 && (
               <div style={{ marginTop: '1rem' }}>
-                <strong style={{ fontSize: '0.875rem', color: '#c62828' }}>Failed Cases:</strong>
+                <strong style={{ fontSize: '0.875rem', color: 'var(--color-error)' }}>Failed Cases:</strong>
                 {latestEvalRun.details
                   .filter((d) => !d.passed)
                   .slice(0, 2)
@@ -521,7 +539,7 @@ export default function ModuleDetailPage() {
                       style={{
                         marginTop: '0.5rem',
                         padding: '0.5rem',
-                        backgroundColor: '#fff',
+                        backgroundColor: 'var(--color-surface)',
                         borderRadius: '4px',
                         fontSize: '0.875rem',
                       }}
@@ -529,10 +547,10 @@ export default function ModuleDetailPage() {
                       <div>
                         <strong>Q:</strong> {failedCase.prompt}
                       </div>
-                      <div style={{ color: '#666', marginTop: '0.25rem' }}>
+                      <div style={{ color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
                         <strong>A:</strong> {failedCase.response.slice(0, 150)}...
                       </div>
-                      <div style={{ color: '#c62828', marginTop: '0.25rem' }}>
+                      <div style={{ color: 'var(--color-error)', marginTop: '0.25rem' }}>
                         Missing: {failedCase.missingKeywords.join(', ')}
                       </div>
                     </div>
@@ -545,7 +563,7 @@ export default function ModuleDetailPage() {
         {/* Eval Cases */}
         <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Eval Cases ({evalCases.length})</h3>
         {evalCases.length === 0 ? (
-          <p style={{ color: '#666', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
             No eval cases defined. Add cases to evaluate your module's quality.
           </p>
         ) : (
@@ -555,14 +573,14 @@ export default function ModuleDetailPage() {
                 key={ec.id}
                 style={{
                   padding: '0.75rem',
-                  backgroundColor: '#f9f9f9',
+                  backgroundColor: 'var(--color-background-secondary)',
                   borderRadius: '4px',
                   fontSize: '0.875rem',
                 }}
               >
                 <div>{ec.prompt}</div>
                 {ec.expectedKeywords.length > 0 && (
-                  <div style={{ marginTop: '0.25rem', color: '#666' }}>
+                  <div style={{ marginTop: '0.25rem', color: 'var(--color-text-secondary)' }}>
                     Keywords: {ec.expectedKeywords.join(', ')}
                   </div>
                 )}
@@ -577,7 +595,7 @@ export default function ModuleDetailPage() {
             style={{
               marginTop: '1rem',
               padding: '1rem',
-              backgroundColor: '#f5f5f5',
+              backgroundColor: 'var(--color-background-secondary)',
               borderRadius: '8px',
             }}
           >
@@ -589,7 +607,7 @@ export default function ModuleDetailPage() {
                 value={newCasePrompt}
                 onChange={(e) => setNewCasePrompt(e.target.value)}
                 placeholder="What question should the module answer?"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -601,7 +619,7 @@ export default function ModuleDetailPage() {
                 value={newCaseKeywords}
                 onChange={(e) => setNewCaseKeywords(e.target.value)}
                 placeholder="keyword1, keyword2, ..."
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -610,8 +628,8 @@ export default function ModuleDetailPage() {
                 disabled={!newCasePrompt.trim()}
                 style={{
                   padding: '0.5rem 1rem',
-                  backgroundColor: newCasePrompt.trim() ? '#0070f3' : '#ccc',
-                  color: '#fff',
+                  backgroundColor: newCasePrompt.trim() ? 'var(--color-primary)' : 'var(--color-border)',
+                  color: newCasePrompt.trim() ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: newCasePrompt.trim() ? 'pointer' : 'not-allowed',
@@ -623,7 +641,7 @@ export default function ModuleDetailPage() {
                 onClick={() => setShowAddEvalCase(false)}
                 style={{
                   padding: '0.5rem 1rem',
-                  border: '1px solid #ddd',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '4px',
                   cursor: 'pointer',
                 }}

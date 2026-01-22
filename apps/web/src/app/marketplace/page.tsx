@@ -218,11 +218,11 @@ export default function MarketplacePage() {
             onClick={() => setSelectedTag('')}
             className={`
               px-3 py-1.5 text-sm rounded-[var(--radius-full)] transition-colors font-medium
-              ${!selectedTag
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
-              }
-            `}
+	              ${!selectedTag
+	                ? 'bg-[var(--color-primary)] text-[var(--color-text-inverse)]'
+	                : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+	              }
+	            `}
           >
             All
           </button>
@@ -232,11 +232,11 @@ export default function MarketplacePage() {
               onClick={() => setSelectedTag(selectedTag === t.tag ? '' : t.tag)}
               className={`
                 px-3 py-1.5 text-sm rounded-[var(--radius-full)] transition-colors font-medium
-                ${selectedTag === t.tag
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
-                }
-              `}
+	                ${selectedTag === t.tag
+	                  ? 'bg-[var(--color-primary)] text-[var(--color-text-inverse)]'
+	                  : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+	                }
+	              `}
             >
               {t.tag}
               <span className="ml-1 text-xs opacity-70">({t.count})</span>
@@ -352,11 +352,11 @@ export default function MarketplacePage() {
                   onClick={() => setCurrentPage(pageNum)}
                   className={`
                     w-8 h-8 rounded-[var(--radius-md)] text-sm font-medium transition-colors
-                    ${currentPage === pageNum
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-background-secondary)]'
-                    }
-                  `}
+	                    ${currentPage === pageNum
+	                      ? 'bg-[var(--color-primary)] text-[var(--color-text-inverse)]'
+	                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-background-secondary)]'
+	                    }
+	                  `}
                 >
                   {pageNum}
                 </button>
@@ -403,9 +403,9 @@ function ModuleCard({
         `}
       >
         {module.featured && (
-          <div className="bg-[var(--color-primary)] text-white text-xs font-medium px-3 py-1 text-center">
-            Featured
-          </div>
+	          <div className="bg-[var(--color-primary)] text-[var(--color-text-inverse)] text-xs font-medium px-3 py-1 text-center">
+	            Featured
+	          </div>
         )}
         <div className="p-5">
           <div className="flex items-start justify-between gap-2 mb-3">
