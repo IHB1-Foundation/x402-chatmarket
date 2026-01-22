@@ -12,6 +12,21 @@
 
 ---
 
+## Glossary: Create Module vs Create Remix
+
+Both flows create a **draft** first; a module only appears in the marketplace after publish.
+
+- **Create Module (Base)**:
+  - API: `POST /api/seller/modules`
+  - `modules.type = base`
+  - Standalone persona + knowledge + pricing; buyer pays module `pay_to`
+
+- **Create Remix (Derivative)**:
+  - API: `POST /api/seller/remix`
+  - `modules.type = remix`, `modules.upstream_module_id` points to an upstream **published** module
+  - Creates a server-managed **agent wallet** for the remix
+  - On paid chat: buyer pays remix → remix agent wallet pays upstream → remix uses upstream reply as context to produce final answer
+
 ## EPIC 0 — Repo, Infra, Config
 
 ### T-0001 — Initialize Monorepo Structure

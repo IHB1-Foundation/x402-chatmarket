@@ -132,9 +132,42 @@ pnpm demo:onchain
 - `POST /api/auth/nonce` - Get SIWE nonce
 - `POST /api/auth/verify` - Verify SIWE signature
 - `POST /api/seller/modules` - Create module draft
+- `POST /api/seller/remix` - Create remix module draft (references upstream + creates agent wallet)
 - `POST /api/seller/modules/:id/publish` - Publish module
 - `POST /api/seller/modules/:id/qa` - Add Q/A knowledge
 - `POST /api/seller/modules/:id/documents` - Add documents
+- `GET /api/seller/modules/:id/agent-wallet` - Get remix agent wallet info
+
+## Create Module vs Create Remix
+
+Both flows create a **draft** first — you must **Publish** from the Seller Dashboard for it to show up in `/marketplace`.
+
+### Create Module (Base Module)
+Use this when you want a standalone module.
+
+- Creates a new **base** module (`type=base`) with its own persona + knowledge.
+- You set:
+  - `personaPrompt` (the module’s system prompt)
+  - optional knowledge (Q/A and/or documents)
+  - pricing (`per_message` or `per_session`) and `payTo` (your revenue address)
+- At runtime:
+  - Buyer pays the module (x402 `402 → sign → verify/settle → reply`)
+  - API runs RAG using **this module’s** knowledge + persona
+
+### Create Remix (Remix / Derivative Module)
+Use this when you want to build a derivative that **depends on an upstream module** and pays it automatically.
+
+- Creates a **remix** module (`type=remix`) that references an **upstream published module** (`upstreamModuleId`).
+- You set:
+  - `deltaPersonaPrompt` (stored as the remix module’s `persona_prompt`)
+  - your own pricing + `payTo` (buyer pays you)
+- System also creates a server-managed **agent wallet** for the remix.
+- At runtime (paid chat):
+  1) Buyer pays the remix module (normal x402 flow)
+  2) The remix uses its **agent wallet** to pay/call the upstream module
+  3) The upstream reply is injected as **UPSTREAM CONTEXT**, then the remix produces the final answer
+- Pricing note: the remix pays upstream on each paid call, so your price should be **higher than upstream** (upstream per-session passes aren’t reused yet).
+- Funding note: for real on-chain settlement you must fund the remix agent wallet with Cronos Testnet gas + token; in `X402_MOCK_MODE=true`, funding isn’t required.
 
 ## Payment Flow
 
@@ -207,14 +240,21 @@ Required env vars (set in Vercel Project → Settings → Environment Variables)
    - Browse modules at `/marketplace`
    - Show search and filtering
 
-2. **Create Module as Seller** (45s)
+2. **Create Module (Base) as Seller** (45s)
    - Go to `/seller`
    - Connect wallet, sign in with SIWE
    - Create module with wizard
    - Add Q/A knowledge
    - Publish module
 
-3. **Paid Chat Flow** (1min)
+3. **Create Remix as Seller** (45s)
+   - Go to `/seller/remix`
+   - Select an upstream published module
+   - Write a delta persona + set pricing (higher than upstream)
+   - Create remix (agent wallet is generated)
+   - (On-chain mode) fund the agent wallet, then Publish
+
+4. **Paid Chat Flow** (45s)
    - Browse to published module
    - Click "Paid Chat"
    - Send message
@@ -222,7 +262,11 @@ Required env vars (set in Vercel Project → Settings → Environment Variables)
    - Sign payment
    - See successful response with tx hash
 
-4. **Free Preview** (30s)
+5. **Remix Paid Chat (Dual Receipts)** (30s)
+   - Chat with a remix module
+   - Show buyer payment + upstream payment in UI
+
+6. **Free Preview** (30s)
    - Use "Try Once" feature
    - Show truncated response
    - Show quota exhausted on retry

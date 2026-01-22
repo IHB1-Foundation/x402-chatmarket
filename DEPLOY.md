@@ -14,7 +14,7 @@ This guide assumes **demo / testnet** usage (no mainnet, no paid API credentials
   - `apps/web` (Next.js)
 - **Railway**
   - `apps/api` (Fastify)
-  - PostgreSQL (**pgvector required**)
+  - PostgreSQL (**pgvector recommended**)
   - Redis
 
 The web app talks to the Railway API via `NEXT_PUBLIC_API_URL`.
@@ -31,9 +31,11 @@ The web app talks to the Railway API via `NEXT_PUBLIC_API_URL`.
    - Redis
    - API
 
-### 1.2 Add Postgres (pgvector required)
+### 1.2 Add Postgres (pgvector recommended)
 
-You must have the `vector` extension available, because the schema uses `embedding vector(1536)`.
+For best retrieval performance, use the `vector` (pgvector) extension.
+
+The API can also run without pgvector (demo-friendly fallback): it will store embeddings as text and compute cosine similarity in application code. This is slower, but keeps the marketplace usable if pgvector is unavailable.
 
 **Option A (simplest): Railway PostgreSQL plugin**
 1. Add a PostgreSQL service/plugin.
@@ -60,10 +62,10 @@ Add a Redis service/plugin (or a Redis container). The API expects `REDIS_URL`.
 1. Create a new Railway service from this GitHub repo.
 2. Set the Railway service **Root Directory** to `apps/api`.
 3. Set commands:
-   - **Build**: `pnpm --filter @soulforge/shared build && pnpm build`
+   - **Build**: `pnpm build`
    - **Start**: `pnpm start`
 
-Why: `apps/api` depends on `@soulforge/shared` via `workspace:*`, so the shared package must be built first.
+Why: `pnpm build` runs a `prebuild` step that builds `@soulforge/shared` (workspace dependency) before running `tsc`.
 
 ### 1.5 Environment variables (demo-friendly: file-based)
 
@@ -78,10 +80,14 @@ This repo includes a committed file:
 It intentionally uses:
 - `LLM_PROVIDER=mock` (no OpenAI key required)
 - `X402_MOCK_MODE=true` by default (toggle to `false` if you want on-chain settlement)
+- `AUTO_SEED=true` by default (auto-populates demo modules if DB is empty)
 
 **You still must provide these via Railway services or variables:**
 - `DATABASE_URL` (from your Railway Postgres service)
 - `REDIS_URL` (from your Railway Redis service)
+
+**Remix modules require:**
+- `AGENT_WALLET_ENCRYPTION_KEY` (used to encrypt server-managed remix agent wallets). This is set in `apps/api/.env.railway` for demo; rotate for real deployments.
 
 Railway usually injects these automatically when you attach/link the Postgres/Redis services to the API service.
 
@@ -94,12 +100,19 @@ Railway sets a `PORT` env var. The API config maps `PORT → API_PORT` automatic
 After deploy, verify:
 - `GET /health`
 - `GET /health/db` (checks Postgres + pgvector + Redis)
+- `GET /health/version` (shows git sha + whether demo seeding ran)
 
 ---
 
 ## 2) (Optional) Seed demo data into Railway DB
 
-If you want the deployed marketplace to be pre-populated, seed your Railway database from your local machine:
+If you want the deployed marketplace to be pre-populated, you have two options:
+
+### Option A: Automatic (recommended for demos)
+Set `AUTO_SEED=true` (default in `apps/api/.env.railway`). On startup, if there are **no published modules**, the API will run the seed script once.
+
+### Option B: Manual (from your local machine)
+Seed your Railway database from your local machine:
 
 1. Copy `DATABASE_URL` and `REDIS_URL` from Railway.
 2. From repo root:

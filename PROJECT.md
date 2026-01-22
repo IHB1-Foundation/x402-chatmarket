@@ -84,6 +84,24 @@ A Remix Module:
 
 **Key property**: Remix pays upstream at runtime with an agent wallet.
 
+### 6.5 Create Module vs Create Remix (What Actually Changes)
+
+Both flows create a **draft** first. A module only appears in the public marketplace after the seller publishes it.
+
+| Topic | Create Module (Base) | Create Remix (Derivative) |
+|---|---|---|
+| Web UI | `/seller/create` | `/seller/remix` |
+| API endpoint | `POST /api/seller/modules` | `POST /api/seller/remix` |
+| `modules.type` | `base` | `remix` |
+| Persona prompt field | `personaPrompt` becomes `modules.persona_prompt` (the system prompt) | `deltaPersonaPrompt` is stored in `modules.persona_prompt` (it’s treated as the remix system prompt) |
+| Knowledge base | Your own Q/A + docs stored on the module | Your own Q/A + docs stored on the remix (no upstream copying) |
+| Upstream dependency | None | Must pick an **upstream published module** (`upstreamModuleId` → `modules.upstream_module_id`) |
+| Agent wallet | Not used | Created at remix creation time (`agent_wallets` table). Server-managed private key (encrypted). |
+| Buyer payment | Buyer pays `payTo` for this module | Buyer pays `payTo` for the remix module |
+| Upstream payment | N/A | Remix server calls upstream at runtime and pays upstream using the remix agent wallet |
+| Runtime behavior | RAG runs on this module’s knowledge + persona | 1) Call upstream `/api/modules/:upstreamId/chat` (paid by agent wallet) → 2) Inject upstream reply as `additionalContext` → 3) Run remix RAG + persona to generate final answer |
+| Pricing implications | You keep revenue minus infra costs | You must cover upstream costs (typically set your price **higher than upstream**). Current implementation pays upstream per paid call; upstream session passes are not reused. |
+
 ---
 
 ## 7) User Roles & Primary User Stories

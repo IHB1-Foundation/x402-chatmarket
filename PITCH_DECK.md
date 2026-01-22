@@ -75,6 +75,7 @@
 - **Runtime payment**: Agent wallet pays upstream on each call
 - **Two payment events per request**: Buyer->Remix + Remix->Upstream
 - **Transparent economics**: Both payments visible in UI
+- **Seller UX**: Create a base module (standalone) or create a remix (derivative that pays upstream)
 
 ### Speaker Notes
 > "This is our key innovation. When a remix module is called, it doesn't copy the original's data. Instead, it calls the original at runtime and pays automatically using an agent wallet. The user sees both payment events - proving that derivatives generate revenue for originals."

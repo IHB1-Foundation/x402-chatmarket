@@ -255,6 +255,26 @@ When using `pnpm demo`, the following modules are automatically created:
 - **Scammy Merchant** - A humorous remix of RPG Merchant ($0.015/msg)
   - Demonstrates the remix feature where derivatives pay upstream
 
+#### What “Remix” Means in SoulForge
+Remix modules are **derivative modules** that compose an upstream module at runtime:
+- A remix references an **upstream published module** (`upstreamModuleId`).
+- The remix has its own pricing + `payTo` (buyer pays the remix creator).
+- On each paid call, the remix server:
+  1) pays/calls the upstream module using a server-managed **agent wallet**
+  2) injects the upstream reply as **UPSTREAM CONTEXT**
+  3) generates the final response using the remix’s own persona + knowledge
+
+Key property: the remix does **not** copy upstream knowledge into its own DB — it calls upstream live and pays for it.
+
+#### Demo Tip (Dual Receipts)
+When chatting with a remix module, point out that the UI can show two payment events:
+1) **Buyer → Remix**
+2) **Remix agent wallet → Upstream**
+
+Funding note:
+- In `X402_MOCK_MODE=true` (default for `pnpm demo`), payments are mocked, so agent wallet funding is not required.
+- In on-chain mode, fund the agent wallet with Cronos Testnet gas + token so it can pay upstream.
+
 All modules have:
 - Eval scores (6-9 out of 10)
 - Knowledge bases with Q/A pairs

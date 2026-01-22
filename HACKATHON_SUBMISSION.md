@@ -37,6 +37,16 @@ When a buyer uses a Remix module, one request can produce **two settlement recei
 
 The UI shows both receipts, proving that **derivatives can automatically generate revenue for originals**.
 
+## Create Module vs Create Remix (What the Buttons Mean)
+
+- **Create Module (Base)**: you create a standalone module with its own persona prompt + knowledge. Buyers pay you directly when they use it.
+- **Create Remix (Derivative)**: you create a module that depends on an **upstream published module**. When a buyer uses your remix:
+  1) the buyer pays your remix (normal x402 flow)
+  2) the remix uses a server-managed **agent wallet** to pay/call the upstream module
+  3) your remix generates the final response using the upstream reply as context
+
+This is why a remix can produce **two receipts** per request (buyer→remix + remix→upstream), while a base module produces one.
+
 ## Who It’s For
 - **AI creators**: monetize personas/knowledge without building subscriptions or billing.
 - **Product builders**: buy capabilities as APIs (pay only when they’re used).
