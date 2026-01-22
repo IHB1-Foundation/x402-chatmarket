@@ -18,12 +18,8 @@
     fill="url(#sf_h)"
   />
 
-  <rect x="14" y="24" width="36" height="9" rx="4.5" fill="#FFFFFF"/>
-  <rect x="22" y="33" width="20" height="13" rx="4" fill="#FFFFFF"/>
-  <rect x="16" y="46" width="32" height="6" rx="3" fill="#FFFFFF"/>
-
   <path
-    d="M48 14L50.2 19.4L55.6 21.6L50.2 23.8L48 29.2L45.8 23.8L40.4 21.6L45.8 19.4L48 14Z"
+    d="M32 14L37.66 26.34L50 32L37.66 37.66L32 50L26.34 37.66L14 32L26.34 26.34L32 14Z"
     fill="#FFFFFF"
   />
 </svg>
