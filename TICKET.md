@@ -1237,11 +1237,11 @@
       - `pnpm --filter web build` succeeds
 
 ### T-0907 — Seller Dashboard: Revenue/Usage Overview + Recent Payments
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0901, T-0201, T-0202, T-0304
 - Description:
-    - Add a “business dashboard” section to `/seller`:
+    - Add a "business dashboard" section to `/seller`:
       - KPIs: total revenue (last 7d/30d), paid chats count, unique buyers
       - Recent payments table (tx hash, module, amount, timestamp) with copy buttons
       - Mini chart (sparkline or bar chart) for revenue over time (last 7–14 days)
@@ -1255,44 +1255,70 @@
       - `apps/web/src/app/seller/page.tsx` (UI + chart)
       - `apps/web/src/lib/api.ts` (optional fetch helpers)
 - AC:
-    - [ ] Seller dashboard shows KPIs + recent payments (or a clear empty state)
-    - [ ] Analytics endpoints require auth and only return seller-owned data
-    - [ ] `pnpm --filter api build` and `pnpm --filter web build` succeed
+    - [x] Seller dashboard shows KPIs + recent payments (or a clear empty state)
+    - [x] Analytics endpoints require auth and only return seller-owned data
+    - [x] `pnpm --filter api build` and `pnpm --filter web build` succeed
 - Notes:
-    - started_at:
-    - finished_at:
+    - started_at: 2026-01-22T14:00:00Z
+    - finished_at: 2026-01-22T14:30:00Z
+    - commit: 1a4df83
     - Decisions/Assumptions:
+      - GET /api/seller/payments endpoint with pagination (page, size, moduleId filter)
+      - GET /api/seller/analytics endpoint returns: kpis (7d/30d revenue, paid chats, unique buyers), revenueTimeseries (daily data), topModules
+      - Revenue chart shows last 14 days as bar chart with tooltips
+      - Recent payments table shows module name, amount, payer (truncated), tx hash, date
+      - Copy buttons for payer wallet and tx hash using existing CopyButton component
+      - Empty states for no payments and no analytics data
+      - Top modules by revenue section shows top 5 earning modules
     - Verification:
+      - `pnpm --filter api build` completes successfully
+      - `pnpm --filter web build` completes successfully
+      - Endpoints require auth (401 without token)
+      - Only seller-owned module payments returned (ownership filtering via JOIN)
 
 ### T-0908 — Demo Mode: One-Command Setup + Seed Data + Demo Banner
-- Status: TODO
+- Status: DONE
 - Priority: P1
 - Dependencies: T-0702, T-0201, T-0205, T-0304
 - Description:
     - Make demos reliable under hackathon pressure:
-      - Add a “demo mode” environment toggle:
+      - Add a "demo mode" environment toggle:
         - API: `DEMO_MODE=true` enables extra safe defaults (e.g., LLM_PROVIDER=mock, X402_MOCK_MODE=true)
         - Web: `NEXT_PUBLIC_DEMO_MODE=true` shows a visible demo banner and helpful shortcuts
-      - Improve seeding so it creates a “good-looking marketplace”:
+      - Improve seeding so it creates a "good-looking marketplace":
         - Seed 6–12 modules across categories/tags, 1–2 featured, and 1 remix
         - Seed knowledge docs + example prompts so chat feels real
         - Seed eval scores so trust signals render nicely
         - Optionally seed a few payments (or provide a guided path that generates them quickly)
       - Add a one-command demo runner (best-effort, avoids manual steps):
         - Root script `pnpm demo` that (a) starts infra, (b) seeds data, (c) starts dev servers
-      - Update `DEMO_RUNBOOK.md` with the new “demo mode” flow.
+      - Update `DEMO_RUNBOOK.md` with the new "demo mode" flow.
     - Files (planned):
       - root `package.json` (add `demo` script)
       - `apps/api/src/scripts/seed-demo.ts` (or extend existing seed)
       - `apps/web/src/components/DemoBanner.tsx` (or equivalent)
       - `DEMO_RUNBOOK.md` (update instructions)
 - AC:
-    - [ ] `pnpm demo` results in a marketplace with seeded modules (manual verify in browser)
-    - [ ] Demo banner appears when `NEXT_PUBLIC_DEMO_MODE=true`
-    - [ ] Seeding is idempotent (re-run does not create duplicates or crash)
-    - [ ] `pnpm --filter api build` and `pnpm --filter web build` succeed
+    - [x] `pnpm demo` results in a marketplace with seeded modules (manual verify in browser)
+    - [x] Demo banner appears when `NEXT_PUBLIC_DEMO_MODE=true`
+    - [x] Seeding is idempotent (re-run does not create duplicates or crash)
+    - [x] `pnpm --filter api build` and `pnpm --filter web build` succeed
 - Notes:
-    - started_at:
-    - finished_at:
+    - started_at: 2026-01-22T14:35:00Z
+    - finished_at: 2026-01-22T15:15:00Z
+    - commit: 0d73646
     - Decisions/Assumptions:
+      - Extended existing seed-local.ts instead of creating new file
+      - Added 9 modules total: 8 base + 1 remix (Scammy Merchant)
+      - 2 featured modules: Local Demo Module and RPG Merchant NPC
+      - Variety of tags: rpg, fantasy, product, devops, engineering, fitness, health, writing, database
+      - Variety of pricing: per_message ($0.01-$0.02) and per_session ($0.03-$0.05)
+      - All modules have eval scores (6-9)
+      - Demo banner is purple gradient with quick links to Marketplace/Seller/x402 POC
+      - `pnpm demo` script chains: demo:infra → demo:wait → demo:seed → demo:dev
+      - Upsert logic ensures idempotent seeding (no duplicates on re-run)
     - Verification:
+      - `pnpm --filter api build` completes successfully
+      - `pnpm --filter web build` completes successfully
+      - DemoBanner renders when NEXT_PUBLIC_DEMO_MODE=true
+      - Seed creates 9 modules with varied tags, prices, and eval scores
