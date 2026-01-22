@@ -7,7 +7,13 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "clean": "pnpm -r clean && rm -rf node_modules"
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "seed": "pnpm --filter api seed:local",
+    "demo": "pnpm demo:infra && pnpm demo:wait && pnpm demo:seed && pnpm demo:dev",
+    "demo:infra": "cd infra && docker compose up -d",
+    "demo:wait": "echo 'Waiting for database...' && sleep 3",
+    "demo:seed": "DEMO_MODE=true X402_MOCK_MODE=true LLM_PROVIDER=mock pnpm --filter api seed:local",
+    "demo:dev": "DEMO_MODE=true X402_MOCK_MODE=true LLM_PROVIDER=mock NEXT_PUBLIC_DEMO_MODE=true concurrently -n web,api -c cyan,magenta \"NEXT_PUBLIC_DEMO_MODE=true pnpm --filter web dev\" \"DEMO_MODE=true X402_MOCK_MODE=true LLM_PROVIDER=mock pnpm --filter api dev\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

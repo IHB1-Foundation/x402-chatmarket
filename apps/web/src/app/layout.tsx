@@ -3,6 +3,7 @@ import { WagmiProvider } from '../providers/WagmiProvider';
 import { AppProviders } from '../providers/AppProviders';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
+import { DemoBanner } from '../components/DemoBanner';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col">
         <WagmiProvider>
           <AppProviders>
+            <DemoBanner />
             <Navbar />
             <main className="flex-1">
               {children}
