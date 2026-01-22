@@ -191,7 +191,7 @@ This repo is a monorepo. When deploying the Next.js app, set the Vercel project 
 Recommended Vercel settings:
 - **Framework Preset**: Next.js
 - **Package Manager**: pnpm (required because `apps/web` depends on `@soulforge/shared` via `workspace:*`)
-- **Build Command**: `pnpm --filter @soulforge/shared build && pnpm build`
+- **Build Command**: use Vercel default (runs `vercel-build`) or set to `pnpm vercel-build`
 
 Note: deploy the Fastify API separately (it lives in `apps/api`) and point the web app at it via `NEXT_PUBLIC_API_URL`.
 

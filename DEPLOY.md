@@ -121,5 +121,6 @@ Deploy the web app on Vercel:
   - `NEXT_PUBLIC_X402_NETWORK`, `NEXT_PUBLIC_X402_CHAIN_ID`
   - `NEXT_PUBLIC_X402_ASSET_CONTRACT` (used for balance display)
 
-See `README.md` for Vercel notes.
+Note: `apps/web/package.json` includes a `vercel-build` script that builds `@soulforge/shared` before running `next build`.
 
+See `README.md` for Vercel notes.
