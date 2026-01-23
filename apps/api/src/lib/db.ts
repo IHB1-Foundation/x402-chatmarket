@@ -8,7 +8,11 @@ let pool: pg.Pool | null = null;
 export function getPool(): pg.Pool {
   if (!pool) {
     const config = getConfig();
-    pool = new Pool({ connectionString: config.DATABASE_URL });
+    pool = new Pool({
+      connectionString: config.DATABASE_URL,
+      // Avoid hanging indefinitely on boot if the DB is unreachable (important for PaaS health checks).
+      connectionTimeoutMillis: 5_000,
+    });
   }
   return pool;
 }

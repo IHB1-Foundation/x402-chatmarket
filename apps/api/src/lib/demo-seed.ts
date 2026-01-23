@@ -12,7 +12,13 @@ export async function ensureDemoSeed(): Promise<DemoSeedResult> {
   }
 
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
+  try {
+    client = await pool.connect();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { attempted: true, seeded: false, reason: `seed failed: ${msg}` };
+  }
 
   try {
     await client.query('SELECT pg_advisory_lock($1::int, $2::int)', [402, 1]);
@@ -50,4 +56,3 @@ export async function ensureDemoSeed(): Promise<DemoSeedResult> {
     client.release();
   }
 }
-

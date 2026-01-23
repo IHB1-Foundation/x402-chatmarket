@@ -239,30 +239,41 @@ async function runFallbackSchema(): Promise<void> {
   }
 }
 
-export async function ensureDbSchema(): Promise<{ method: EnsureSchemaMethod }> {
-  if (await tableExists('modules')) return { method: 'already' };
+type EnsureSchemaResult =
+  | { method: Exclude<EnsureSchemaMethod, 'error' | 'pending'> }
+  | { method: 'pending' }
+  | { method: 'error'; error: string };
 
-  const pool = getPool();
+export async function ensureDbSchema(): Promise<EnsureSchemaResult> {
+  try {
+    if (await tableExists('modules')) return { method: 'already' };
 
-  const initSql = await readInitSql();
-  if (initSql) {
-    try {
-      console.log('DB schema missing: running infra/init-db.sql (best-effort).');
-      await pool.query(initSql);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`WARN: infra/init-db.sql failed: ${msg}`);
+    const pool = getPool();
+
+    const initSql = await readInitSql();
+    if (initSql) {
+      try {
+        console.log('DB schema missing: running infra/init-db.sql (best-effort).');
+        await pool.query(initSql);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`WARN: infra/init-db.sql failed: ${msg}`);
+      }
+
+      if (await tableExists('modules')) return { method: 'init-db.sql' };
     }
 
-    if (await tableExists('modules')) return { method: 'init-db.sql' };
+    console.log('DB schema missing: applying fallback schema (no pgvector).');
+    await runFallbackSchema();
+
+    if (!(await tableExists('modules'))) {
+      return { method: 'error', error: 'DB schema initialization failed: modules table still missing.' };
+    }
+
+    return { method: 'fallback' };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`WARN: DB schema initialization error: ${msg}`);
+    return { method: 'error', error: msg };
   }
-
-  console.log('DB schema missing: applying fallback schema (no pgvector).');
-  await runFallbackSchema();
-
-  if (!(await tableExists('modules'))) {
-    throw new Error('DB schema initialization failed: modules table still missing.');
-  }
-
-  return { method: 'fallback' };
 }
