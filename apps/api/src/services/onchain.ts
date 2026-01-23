@@ -142,6 +142,28 @@ async function getBlockTimestampIso(params: {
   return iso;
 }
 
+function extractRpcMaxBlockDistance(err: unknown): bigint | null {
+  const parts: string[] = [];
+  if (err instanceof Error) parts.push(err.message);
+  if (typeof err === 'string') parts.push(err);
+  if (typeof err === 'object' && err) {
+    const maybeDetails = (err as { details?: unknown }).details;
+    if (typeof maybeDetails === 'string') parts.push(maybeDetails);
+    const maybeShort = (err as { shortMessage?: unknown }).shortMessage;
+    if (typeof maybeShort === 'string') parts.push(maybeShort);
+  }
+
+  const haystack = parts.join('\n');
+  const match = haystack.match(/maximum\s+\[from,\s*to\]\s+blocks\s+distance:\s*(\d+)/i);
+  if (!match) return null;
+
+  try {
+    return BigInt(match[1]);
+  } catch {
+    return null;
+  }
+}
+
 async function getLogsChunked<TLog>(params: {
   client: ReturnType<typeof createPublicClient>;
   getLogs: (fromBlock: bigint, toBlock: bigint) => Promise<TLog[]>;
@@ -151,6 +173,7 @@ async function getLogsChunked<TLog>(params: {
   const logs: TLog[] = [];
   let cursor = params.fromBlock;
   let step = 100_000n;
+  const minStep = 250n;
 
   while (cursor <= params.toBlock) {
     const end = cursor + step - 1n > params.toBlock ? params.toBlock : cursor + step - 1n;
@@ -159,8 +182,18 @@ async function getLogsChunked<TLog>(params: {
       logs.push(...chunk);
       cursor = end + 1n;
     } catch (err) {
-      if (step <= 5_000n) throw err;
+      const maxDistance = extractRpcMaxBlockDistance(err);
+      if (maxDistance && maxDistance > 0n) {
+        // Some RPCs (e.g. Cronos) hard-limit the [fromBlock,toBlock] range.
+        // `maxDistance` is usually inclusive, so `step=maxDistance` is safely within bounds.
+        if (step > maxDistance) step = maxDistance;
+        if (step < minStep) step = minStep;
+        continue;
+      }
+
+      if (step <= minStep) throw err;
       step = step / 2n;
+      if (step < minStep) step = minStep;
     }
   }
 

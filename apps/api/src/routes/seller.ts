@@ -19,7 +19,7 @@ import {
   getLatestEvalRun,
   getEvalRuns,
 } from '../services/eval.js';
-import { listTokenTransfersToAddresses } from '../services/onchain.js';
+import { verifyPaymentTxOnchain } from '../services/onchain.js';
 
 const CreateModuleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -42,15 +42,6 @@ const CreateModuleSchema = z.object({
 
 type CreateModuleRequest = z.infer<typeof CreateModuleSchema>;
 
-type SellerModuleOnchain = {
-  id: string;
-  name: string;
-  payTo: string;
-  priceAmount: string;
-  network: string;
-  assetContract: string;
-};
-
 const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
 function normalizeEvmAddressLower(value: unknown): string | null {
@@ -69,6 +60,27 @@ function normalizeSupportedNetwork(value: unknown, fallback: unknown): string | 
   if (chosen === 'cronos-mainnet' || chosen === 'cronos-testnet') return chosen;
 
   return null;
+}
+
+async function mapWithConcurrency<T, U>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<U>
+): Promise<U[]> {
+  const results: U[] = new Array(items.length);
+  let nextIndex = 0;
+
+  const workers = new Array(Math.min(concurrency, items.length)).fill(null).map(async () => {
+    while (true) {
+      const current = nextIndex;
+      nextIndex += 1;
+      if (current >= items.length) return;
+      results[current] = await fn(items[current]);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
 }
 
 export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
@@ -1067,7 +1079,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
     page: z.coerce.number().int().positive().default(1),
     size: z.coerce.number().int().positive().max(100).default(20),
     moduleId: z.string().uuid().optional(),
-    days: z.coerce.number().int().positive().max(365).default(90),
+    days: z.coerce.number().int().positive().max(365).default(30),
   });
 
   // List payments for seller's modules
@@ -1093,196 +1105,121 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       const { page, size, moduleId, days } = parseResult.data;
       const offset = (page - 1) * size;
 
-      const modulesResult = await pool.query(
-        `SELECT id, name, pay_to, price_amount, network, asset_contract
-         FROM modules
-         WHERE owner_user_id = $1`,
-        [user.sub]
+      const whereValues: unknown[] = [user.sub, days];
+      const whereParts = [
+        `m.owner_user_id = $1`,
+        `p.event = 'settled'`,
+        `p.created_at >= NOW() - ($2::int * INTERVAL '1 day')`,
+      ];
+      if (moduleId) {
+        whereValues.push(moduleId);
+        whereParts.push(`p.module_id = $${whereValues.length}`);
+      }
+      const whereClause = whereParts.join(' AND ');
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*) as total
+         FROM payments p
+         JOIN modules m ON p.module_id = m.id
+         WHERE ${whereClause}`,
+        whereValues
       );
+      const total = parseInt(countResult.rows[0]?.total ?? '0', 10);
 
-      const modules: SellerModuleOnchain[] = modulesResult.rows
-        .map((row) => {
-          const payTo = normalizeEvmAddressLower(row.pay_to);
-          const assetContract =
-            normalizeEvmAddressLower(row.asset_contract) ?? normalizeEvmAddressLower(config.X402_ASSET_CONTRACT);
-          const network = normalizeSupportedNetwork(row.network, config.X402_NETWORK);
-
-          if (!payTo || !assetContract || !network) return null;
-
-          return {
-            id: row.id as string,
-            name: row.name as string,
-            payTo,
-            priceAmount: row.price_amount as string,
-            network,
-            assetContract,
-          } satisfies SellerModuleOnchain;
-        })
-        .filter((m): m is SellerModuleOnchain => m !== null);
-
-      if (modules.length === 0) {
+      if (total === 0) {
         return reply.send({
           payments: [],
           pagination: { page, size, total: 0, totalPages: 0 },
-          meta: { source: 'onchain', days },
+          meta: { source: 'db+onchain', days, verified: 0, confirmed: 0 },
         });
       }
 
-      const modulesByPayTo = new Map<string, SellerModuleOnchain[]>();
-      const groups = new Map<
-        string,
-        { network: string; assetContract: string; toAddresses: Set<string> }
-      >();
+      const listValues = [...whereValues, size, offset];
+      const limitParam = `$${listValues.length - 1}`;
+      const offsetParam = `$${listValues.length}`;
 
-      for (const m of modules) {
-        const existing = modulesByPayTo.get(m.payTo) || [];
-        existing.push(m);
-        modulesByPayTo.set(m.payTo, existing);
+      const paymentsResult = await pool.query(
+        `SELECT p.id, p.module_id, m.name as module_name,
+                p.payer_wallet, p.pay_to, p.value, p.tx_hash,
+                COALESCE(NULLIF(p.network, ''), NULLIF(m.network, '')) as network,
+                NULLIF(m.asset_contract, '') as asset_contract,
+                p.event, p.error, p.created_at
+         FROM payments p
+         JOIN modules m ON p.module_id = m.id
+         WHERE ${whereClause}
+         ORDER BY p.created_at DESC
+         LIMIT ${limitParam} OFFSET ${offsetParam}`,
+        listValues
+      );
 
-        const key = `${m.network}:${m.assetContract}`;
-        const group = groups.get(key) || { network: m.network, assetContract: m.assetContract, toAddresses: new Set<string>() };
-        group.toAddresses.add(m.payTo);
-        groups.set(key, group);
-      }
+      const payments = await mapWithConcurrency(paymentsResult.rows, 10, async (row) => {
+        const txHash = typeof row.tx_hash === 'string' ? row.tx_hash.toLowerCase() : null;
+        const networkRaw = typeof row.network === 'string' ? row.network : '';
+        const network = normalizeSupportedNetwork(networkRaw, config.X402_NETWORK);
 
-      const msInDay = 24 * 60 * 60 * 1000;
-      const fromTimestampMs = Date.now() - days * msInDay;
+        const assetContract =
+          normalizeEvmAddressLower(row.asset_contract) ?? normalizeEvmAddressLower(config.X402_ASSET_CONTRACT);
 
-      const transfers: Array<{
-        txHash: string;
-        blockNumber: string;
-        blockTimestamp: string;
-        logIndex: number;
-        from: string;
-        to: string;
-        value: string;
-        network: string;
-      }> = [];
-      const scanMeta: Array<{ network: string; assetContract: string; fromBlock: string; toBlock: string }> = [];
+        const payTo = normalizeEvmAddressLower(row.pay_to);
+        const payerWallet = normalizeEvmAddressLower(row.payer_wallet);
+        const value = typeof row.value === 'string' ? row.value : '0';
 
-      try {
-        for (const group of groups.values()) {
-          const { transfers: found, meta } = await listTokenTransfersToAddresses({
-            network: group.network,
-            assetContract: group.assetContract,
-            toAddresses: Array.from(group.toAddresses),
-            fromTimestampMs,
+        let onchain:
+          | Awaited<ReturnType<typeof verifyPaymentTxOnchain>>
+          | { status: 'error'; txHash: string; network: string; error: string };
+
+        if (!txHash) {
+          onchain = { status: 'error', txHash: '', network: network || networkRaw || config.X402_NETWORK, error: 'Missing tx_hash' };
+        } else if (!network) {
+          onchain = { status: 'error', txHash, network: networkRaw || config.X402_NETWORK, error: 'Unsupported network' };
+        } else if (!assetContract) {
+          onchain = { status: 'error', txHash, network, error: 'Missing asset contract (X402_ASSET_CONTRACT)' };
+        } else if (!payTo) {
+          onchain = { status: 'error', txHash, network, error: 'Invalid pay_to' };
+        } else {
+          onchain = await verifyPaymentTxOnchain({
+            txHash,
+            network,
+            assetContract,
+            expectedTo: payTo,
+            expectedValue: value,
+            expectedFrom: payerWallet || undefined,
           });
-
-          transfers.push(
-            ...found.map((t) => ({
-              txHash: t.txHash.toLowerCase(),
-              blockNumber: t.blockNumber,
-              blockTimestamp: t.blockTimestamp,
-              logIndex: t.logIndex,
-              from: t.from,
-              to: t.to,
-              value: t.value,
-              network: t.network,
-            }))
-          );
-          scanMeta.push({ network: group.network, assetContract: group.assetContract, ...meta });
         }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        request.log.error({ err: msg }, 'Failed to scan on-chain payments');
-        return reply.status(503).send({ error: 'Failed to scan on-chain payments', details: msg });
-      }
 
-      transfers.sort((a, b) => {
-        if (a.blockTimestamp < b.blockTimestamp) return 1;
-        if (a.blockTimestamp > b.blockTimestamp) return -1;
-        return b.logIndex - a.logIndex;
-      });
-
-      const uniqueTxHashes = Array.from(new Set(transfers.map((t) => t.txHash)));
-      const txToModule = new Map<string, { moduleId: string; moduleName: string }>();
-
-      if (uniqueTxHashes.length > 0) {
-        const mapResult = await pool.query(
-          `SELECT LOWER(p.tx_hash) as tx_hash, p.module_id, m.name as module_name
-           FROM payments p
-           JOIN modules m ON p.module_id = m.id
-           WHERE m.owner_user_id = $1
-             AND p.event = 'settled'
-             AND LOWER(p.tx_hash) = ANY($2)`,
-          [user.sub, uniqueTxHashes]
-        );
-        for (const row of mapResult.rows) {
-          if (row.tx_hash) {
-            txToModule.set(row.tx_hash as string, {
-              moduleId: row.module_id as string,
-              moduleName: row.module_name as string,
-            });
-          }
-        }
-      }
-
-      const paymentsAll = transfers.map((t) => {
-        const mapped = txToModule.get(t.txHash);
-        let resolvedModuleId: string | null = mapped?.moduleId || null;
-        let resolvedModuleName = mapped?.moduleName || 'Unattributed';
-
-        if (!mapped) {
-          const candidates = modulesByPayTo.get(t.to) || [];
-          if (candidates.length === 1) {
-            resolvedModuleId = candidates[0].id;
-            resolvedModuleName = candidates[0].name;
-          } else if (candidates.length > 1) {
-            const priceMatches = candidates.filter((m) => m.priceAmount === t.value);
-            if (priceMatches.length === 1) {
-              resolvedModuleId = priceMatches[0].id;
-              resolvedModuleName = priceMatches[0].name;
-            } else {
-              resolvedModuleId = null;
-              resolvedModuleName = 'Multiple modules';
-            }
-          }
-        }
+        const createdAt =
+          onchain.status === 'confirmed'
+            ? onchain.blockTimestamp
+            : row.created_at;
 
         return {
-          id: `${t.txHash}:${t.logIndex}`,
-          moduleId: resolvedModuleId,
-          moduleName: resolvedModuleName,
-          payerWallet: t.from,
-          payTo: t.to,
-          value: t.value,
-          txHash: t.txHash,
-          network: t.network,
-          event: 'settled',
-          error: null,
-          createdAt: t.blockTimestamp,
-          onchain: {
-            status: 'confirmed',
-            txHash: t.txHash,
-            network: t.network,
-            blockNumber: t.blockNumber,
-            blockTimestamp: t.blockTimestamp,
-            from: t.from,
-            to: t.to,
-            value: t.value,
-          },
+          id: row.id as string,
+          moduleId: row.module_id as string,
+          moduleName: row.module_name as string,
+          payerWallet: (payerWallet || (row.payer_wallet as string)).toLowerCase(),
+          payTo: (payTo || (row.pay_to as string)).toLowerCase(),
+          value,
+          txHash,
+          network: network || networkRaw || config.X402_NETWORK,
+          event: row.event as string,
+          error: row.error as string | null,
+          createdAt,
+          onchain,
         };
       });
 
-      const paymentsFiltered = moduleId ? paymentsAll.filter((p) => p.moduleId === moduleId) : paymentsAll;
-      const total = paymentsFiltered.length;
-      const paged = paymentsFiltered.slice(offset, offset + size);
+      const verifiedCount = payments.filter((p) => p.txHash).length;
+      const confirmedCount = payments.filter((p) => p.onchain?.status === 'confirmed').length;
 
       return reply.send({
-        payments: paged,
+        payments,
         pagination: {
           page,
           size,
           total,
           totalPages: Math.ceil(total / size),
         },
-        meta: {
-          source: 'onchain',
-          days,
-          scannedGroups: scanMeta,
-          matchedFromDb: txToModule.size,
-        },
+        meta: { source: 'db+onchain', days, verified: verifiedCount, confirmed: confirmedCount },
       });
     }
   );
@@ -1312,170 +1249,109 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       const { days } = parseResult.data;
+      const msInDay = 24 * 60 * 60 * 1000;
+      const windowDays = Math.max(days, 30);
 
-      const modulesResult = await pool.query(
-        `SELECT id, name, pay_to, price_amount, network, asset_contract
-         FROM modules
-         WHERE owner_user_id = $1`,
-        [user.sub]
+      const paymentsResult = await pool.query(
+        `SELECT p.id, p.module_id, m.name as module_name,
+                p.payer_wallet, p.pay_to, p.value, p.tx_hash,
+                COALESCE(NULLIF(p.network, ''), NULLIF(m.network, '')) as network,
+                NULLIF(m.asset_contract, '') as asset_contract
+         FROM payments p
+         JOIN modules m ON p.module_id = m.id
+         WHERE m.owner_user_id = $1
+           AND p.event = 'settled'
+           AND p.created_at >= NOW() - ($2::int * INTERVAL '1 day')`,
+        [user.sub, windowDays]
       );
 
-      const modules: SellerModuleOnchain[] = modulesResult.rows
-        .map((row) => {
-          const payTo = normalizeEvmAddressLower(row.pay_to);
-          const assetContract =
-            normalizeEvmAddressLower(row.asset_contract) ?? normalizeEvmAddressLower(config.X402_ASSET_CONTRACT);
-          const network = normalizeSupportedNetwork(row.network, config.X402_NETWORK);
+      const verified = await mapWithConcurrency(paymentsResult.rows, 10, async (row) => {
+        const txHash = typeof row.tx_hash === 'string' ? row.tx_hash.toLowerCase() : null;
+        const networkRaw = typeof row.network === 'string' ? row.network : '';
+        const network = normalizeSupportedNetwork(networkRaw, config.X402_NETWORK);
 
-          if (!payTo || !assetContract || !network) return null;
+        const assetContract =
+          normalizeEvmAddressLower(row.asset_contract) ?? normalizeEvmAddressLower(config.X402_ASSET_CONTRACT);
 
-          return {
-            id: row.id as string,
-            name: row.name as string,
-            payTo,
-            priceAmount: row.price_amount as string,
+        const payTo = normalizeEvmAddressLower(row.pay_to);
+        const payerWallet = normalizeEvmAddressLower(row.payer_wallet);
+        const value = typeof row.value === 'string' ? row.value : '0';
+
+        let onchain:
+          | Awaited<ReturnType<typeof verifyPaymentTxOnchain>>
+          | { status: 'error'; txHash: string; network: string; error: string };
+
+        if (!txHash) {
+          onchain = { status: 'error', txHash: '', network: network || networkRaw || config.X402_NETWORK, error: 'Missing tx_hash' };
+        } else if (!network) {
+          onchain = { status: 'error', txHash, network: networkRaw || config.X402_NETWORK, error: 'Unsupported network' };
+        } else if (!assetContract) {
+          onchain = { status: 'error', txHash, network, error: 'Missing asset contract (X402_ASSET_CONTRACT)' };
+        } else if (!payTo) {
+          onchain = { status: 'error', txHash, network, error: 'Invalid pay_to' };
+        } else {
+          onchain = await verifyPaymentTxOnchain({
+            txHash,
             network,
             assetContract,
-          } satisfies SellerModuleOnchain;
-        })
-        .filter((m): m is SellerModuleOnchain => m !== null);
-
-      if (modules.length === 0) {
-        return reply.send({
-          kpis: {
-            totalRevenue7d: '0',
-            totalRevenue30d: '0',
-            paidChatsCount: 0,
-            uniqueBuyers: 0,
-          },
-          revenueTimeseries: [],
-          topModules: [],
-          meta: {
-            source: 'onchain',
-            transfersScanned: 0,
-            transfersAttributed: 0,
-            transfersUnattributed: 0,
-          },
-        });
-      }
-
-      const modulesByPayTo = new Map<string, SellerModuleOnchain[]>();
-      const groups = new Map<
-        string,
-        { network: string; assetContract: string; toAddresses: Set<string> }
-      >();
-
-      for (const m of modules) {
-        const existing = modulesByPayTo.get(m.payTo) || [];
-        existing.push(m);
-        modulesByPayTo.set(m.payTo, existing);
-
-        const key = `${m.network}:${m.assetContract}`;
-        const group = groups.get(key) || { network: m.network, assetContract: m.assetContract, toAddresses: new Set<string>() };
-        group.toAddresses.add(m.payTo);
-        groups.set(key, group);
-      }
-
-      const windowDays = Math.max(days, 30);
-      const msInDay = 24 * 60 * 60 * 1000;
-      const fromTimestampMs = Date.now() - windowDays * msInDay;
-
-      const transfers: Array<{
-        txHash: string;
-        blockNumber: string;
-        blockTimestamp: string;
-        from: string;
-        to: string;
-        value: string;
-        network: string;
-      }> = [];
-
-      const scanErrors: Array<{ network: string; assetContract: string; error: string }> = [];
-      for (const group of groups.values()) {
-        try {
-          const { transfers: found } = await listTokenTransfersToAddresses({
-            network: group.network,
-            assetContract: group.assetContract,
-            toAddresses: Array.from(group.toAddresses),
-            fromTimestampMs,
+            expectedTo: payTo,
+            expectedValue: value,
+            expectedFrom: payerWallet || undefined,
           });
-          transfers.push(
-            ...found.map((t) => ({
-              txHash: t.txHash.toLowerCase(),
-              blockNumber: t.blockNumber,
-              blockTimestamp: t.blockTimestamp,
-              from: t.from,
-              to: t.to,
-              value: t.value,
-              network: t.network,
-            }))
-          );
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          request.log.error({ err: msg }, 'Failed to scan on-chain transfers for analytics');
-          scanErrors.push({ network: group.network, assetContract: group.assetContract, error: msg });
         }
-      }
 
-      if (scanErrors.length > 0 && transfers.length === 0) {
-        return reply.status(503).send({
-          error: 'Failed to scan on-chain transfers for analytics',
-          details: scanErrors,
-        });
-      }
-
-      const uniqueTxHashes = Array.from(new Set(transfers.map((t) => t.txHash)));
-      const txToModule = new Map<string, { moduleId: string; moduleName: string }>();
-      if (uniqueTxHashes.length > 0) {
-        const mapResult = await pool.query(
-          `SELECT LOWER(p.tx_hash) as tx_hash, p.module_id, m.name as module_name
-           FROM payments p
-           JOIN modules m ON p.module_id = m.id
-           WHERE m.owner_user_id = $1
-             AND p.event = 'settled'
-             AND LOWER(p.tx_hash) = ANY($2)`,
-          [user.sub, uniqueTxHashes]
-        );
-        for (const row of mapResult.rows) {
-          if (row.tx_hash) {
-            txToModule.set(row.tx_hash as string, {
-              moduleId: row.module_id as string,
-              moduleName: row.module_name as string,
-            });
-          }
-        }
-      }
+        return {
+          moduleId: row.module_id as string,
+          moduleName: row.module_name as string,
+          payerWallet: (payerWallet || (row.payer_wallet as string)).toLowerCase(),
+          txHash,
+          value,
+          onchain,
+        };
+      });
 
       const nowMs = Date.now();
-
       const sevenDaysAgo = nowMs - 7 * msInDay;
       const thirtyDaysAgo = nowMs - 30 * msInDay;
       const nDaysAgo = nowMs - days * msInDay;
 
       let revenue7d = 0n;
       let revenue30d = 0n;
-
       let paidChatsCount = 0;
       const uniqueBuyers = new Set<string>();
 
       const dayBuckets = new Map<string, { revenue: bigint; payments: number }>();
-      const perModule = new Map<string, { revenue: bigint; payments: number }>();
+      const perModule = new Map<string, { name: string; revenue: bigint; payments: number }>();
 
-      let transfersAttributed = 0;
-      let transfersUnattributed = 0;
+      const statusCounts = {
+        confirmed: 0,
+        not_found: 0,
+        reverted: 0,
+        mismatch: 0,
+        unsupported_network: 0,
+        error: 0,
+      };
 
-      for (const t of transfers) {
-        const ts = Date.parse(t.blockTimestamp);
+      for (const p of verified) {
+        if (p.onchain.status !== 'confirmed') {
+          const key = p.onchain.status as keyof typeof statusCounts;
+          if (key in statusCounts) statusCounts[key] += 1;
+          continue;
+        }
+
+        statusCounts.confirmed += 1;
+
+        const ts = Date.parse(p.onchain.blockTimestamp);
         if (Number.isNaN(ts)) continue;
 
-        const value = BigInt(t.value);
+        const value = BigInt(p.value);
 
         if (ts >= sevenDaysAgo) revenue7d += value;
         if (ts >= thirtyDaysAgo) revenue30d += value;
 
         if (ts >= nDaysAgo) {
           paidChatsCount += 1;
-          uniqueBuyers.add(t.from);
+          uniqueBuyers.add(p.payerWallet);
 
           const dateStr = new Date(ts).toISOString().split('T')[0];
           const bucket = dayBuckets.get(dateStr) || { revenue: 0n, payments: 0 };
@@ -1483,36 +1359,10 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
           bucket.payments += 1;
           dayBuckets.set(dateStr, bucket);
 
-          const mapped = txToModule.get(t.txHash);
-          let moduleId: string | null = mapped?.moduleId || null;
-          let moduleName: string | null = mapped?.moduleName || null;
-
-          if (!mapped) {
-            const candidates = modulesByPayTo.get(t.to) || [];
-            if (candidates.length === 1) {
-              moduleId = candidates[0].id;
-              moduleName = candidates[0].name;
-            } else if (candidates.length > 1) {
-              const priceMatches = candidates.filter((m) => m.priceAmount === t.value);
-              if (priceMatches.length === 1) {
-                moduleId = priceMatches[0].id;
-                moduleName = priceMatches[0].name;
-              } else {
-                moduleId = null;
-                moduleName = null;
-              }
-            }
-          }
-
-          if (moduleId && moduleName) {
-            transfersAttributed += 1;
-            const mod = perModule.get(moduleId) || { revenue: 0n, payments: 0 };
-            mod.revenue += value;
-            mod.payments += 1;
-            perModule.set(moduleId, mod);
-          } else {
-            transfersUnattributed += 1;
-          }
+          const mod = perModule.get(p.moduleId) || { name: p.moduleName, revenue: 0n, payments: 0 };
+          mod.revenue += value;
+          mod.payments += 1;
+          perModule.set(p.moduleId, mod);
         }
       }
 
@@ -1529,11 +1379,11 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       const topModules = Array.from(perModule.entries())
         .map(([id, stats]) => ({
           id,
-          name: modules.find((m) => m.id === id)?.name || 'Unknown',
+          name: stats.name,
           totalRevenue: stats.revenue.toString(),
           totalPayments: stats.payments,
         }))
-        .sort((a, b) => BigInt(b.totalRevenue) > BigInt(a.totalRevenue) ? 1 : BigInt(b.totalRevenue) < BigInt(a.totalRevenue) ? -1 : 0)
+        .sort((a, b) => (BigInt(b.totalRevenue) > BigInt(a.totalRevenue) ? 1 : BigInt(b.totalRevenue) < BigInt(a.totalRevenue) ? -1 : 0))
         .slice(0, 5);
 
       return reply.send({
@@ -1546,12 +1396,10 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         revenueTimeseries: timeseries,
         topModules,
         meta: {
-          source: 'onchain',
-          transfersScanned: transfers.length,
-          transfersAttributed,
-          transfersUnattributed,
-          matchedFromDb: txToModule.size,
-          scanErrors: scanErrors.length > 0 ? scanErrors : undefined,
+          source: 'db+onchain',
+          windowDays,
+          paymentsScanned: verified.length,
+          statusCounts,
         },
       });
     }

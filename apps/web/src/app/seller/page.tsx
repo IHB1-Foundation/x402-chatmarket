@@ -134,7 +134,7 @@ export default function SellerDashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [paymentsPagination, setPaymentsPagination] = useState<Pagination | null>(null);
-  const [paymentsDays, setPaymentsDays] = useState(90);
+  const [paymentsDays, setPaymentsDays] = useState(30);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loadingModules, setLoadingModules] = useState(false);
   const [loadingPayments, setLoadingPayments] = useState(false);
