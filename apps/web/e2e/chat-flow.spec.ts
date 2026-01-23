@@ -150,6 +150,55 @@ test.describe('Chat Page', () => {
       test.skip();
     }
   });
+
+  test('should surface 402 errors that do not include paymentRequirements', async ({ page }) => {
+    await page.goto('/marketplace');
+    await page.waitForLoadState('networkidle');
+
+    const moduleLink = page.locator('a[href*="/marketplace/"]').first();
+
+    if ((await moduleLink.count()) > 0) {
+      const href = await moduleLink.getAttribute('href');
+      const moduleId = href?.split('/').pop();
+
+      if (moduleId) {
+        await page.goto(`/chat/${moduleId}`);
+        await page.waitForLoadState('networkidle');
+
+        await page.route('**/api/modules/*/chat', async (route) => {
+          if (route.request().method() !== 'POST') return route.continue();
+          return route.fulfill({
+            status: 402,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: 'Payment settlement failed',
+              details: 'X402_FACILITATOR_BASE_URL not configured',
+            }),
+          });
+        });
+
+        const messageInput = page.locator('textarea, input[type="text"]').first();
+        if ((await messageInput.count()) > 0) {
+          await messageInput.fill('Hello, this should error');
+
+          const sendButton = page.getByRole('button', { name: /send/i });
+          if ((await sendButton.count()) > 0) {
+            await sendButton.click();
+
+            await expect(page.getByText(/payment settlement failed/i).first()).toBeVisible();
+          } else {
+            test.skip();
+          }
+        } else {
+          test.skip();
+        }
+      } else {
+        test.skip();
+      }
+    } else {
+      test.skip();
+    }
+  });
 });
 
 test.describe('Try Once Mode', () => {

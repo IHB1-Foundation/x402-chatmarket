@@ -168,8 +168,8 @@ export default function ChatPage() {
     return sessionPass.expiresAt > now && sessionPass.creditsRemaining > 0;
   };
 
-  const sendMessage = async (messageText: string, paymentHeader?: string) => {
-    if (!messageText.trim()) return;
+  const sendMessage = async (messageText: string, paymentHeader?: string): Promise<boolean> => {
+    if (!messageText.trim()) return false;
 
     setLoading(true);
     setError(null);
@@ -205,11 +205,22 @@ export default function ChatPage() {
       const data = await res.json();
 
       if (res.status === 402) {
-        setPaymentRequirements(data.paymentRequirements);
-        setPendingMessage(messageText);
-        setShowPaymentModal(true);
-        setMessages((prev) => prev.slice(0, -1));
-        return;
+        if (data?.paymentRequirements) {
+          setPaymentRequirements(data.paymentRequirements);
+          setPendingMessage(messageText);
+          setShowPaymentModal(true);
+          setMessages((prev) => prev.slice(0, -1));
+          return false;
+        }
+
+        const details =
+          typeof data?.details === 'string'
+            ? data.details
+            : data?.details
+              ? JSON.stringify(data.details)
+              : null;
+
+        throw new Error(details ? `${data?.error || 'Payment required'}: ${details}` : (data?.error || 'Payment required'));
       }
 
       if (!res.ok) {
@@ -239,11 +250,14 @@ export default function ChatPage() {
       if (data.isTryOnce) {
         setError('Free preview complete. Pay to continue chatting.');
       }
+
+      return true;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMsg);
       showToast(errorMsg, 'error');
       setMessages((prev) => prev.slice(0, -1));
+      return false;
     } finally {
       setLoading(false);
     }
@@ -253,18 +267,20 @@ export default function ChatPage() {
     if (!paymentRequirements || !pendingMessage) return;
 
     setLoading(true);
-    setShowPaymentModal(false);
 
     try {
       const paymentHeader = await buildPaymentHeader(paymentRequirements);
-      await sendMessage(pendingMessage, paymentHeader);
+      const sent = await sendMessage(pendingMessage, paymentHeader);
+      if (!sent) return;
       setPendingMessage(null);
       setPaymentRequirements(null);
+      setShowPaymentModal(false);
       showToast('Payment successful!', 'success');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Payment failed';
       setError(errorMsg);
       showToast(errorMsg, 'error');
+    } finally {
       setLoading(false);
     }
   };
