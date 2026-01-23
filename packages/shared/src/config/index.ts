@@ -1,5 +1,18 @@
 import { z } from 'zod';
 
+const EnvBooleanSchema = z.preprocess((value) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return value;
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === '') return undefined;
+
+  if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n', 'off'].includes(normalized)) return false;
+
+  return value;
+}, z.boolean());
+
 const ApiConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   APP_URL: z.string().url().optional(),
@@ -28,7 +41,7 @@ const ApiConfigSchema = z.object({
   X402_CHAIN_ID: z.coerce.number().int().default(338),
   X402_EIP712_NAME: z.string().default('x402'),
   X402_EIP712_VERSION: z.string().default('1'),
-  X402_MOCK_MODE: z.coerce.boolean().default(false),
+  X402_MOCK_MODE: EnvBooleanSchema.default(false),
 
   // Security
   JWT_SECRET: z.string().min(32).optional(),

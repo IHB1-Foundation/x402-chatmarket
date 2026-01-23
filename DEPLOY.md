@@ -79,7 +79,7 @@ This repo includes a committed file:
 
 It intentionally uses:
 - `LLM_PROVIDER=mock` (no OpenAI key required)
-- `X402_MOCK_MODE=true` by default (toggle to `false` if you want on-chain settlement)
+- `X402_MOCK_MODE=false` by default (toggle to `true` if you want mock payments)
 - `AUTO_SEED=true` by default (auto-populates demo modules if DB is empty)
 
 **You still must provide these via Railway services or variables:**
