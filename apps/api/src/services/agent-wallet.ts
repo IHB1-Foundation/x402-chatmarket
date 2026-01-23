@@ -218,24 +218,25 @@ export async function buildAgentPaymentHeader(params: {
   }
 
   const chainId = config.X402_CHAIN_ID ?? 338; // cronos-testnet default
-  const validAfter = Math.floor(Date.now() / 1000);
-  const validBefore = validAfter + 300; // 5 minutes
-  const nonce = Date.now();
+  const validAfter = 0;
+  const validBefore = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+  const nonce = `0x${randomBytes(32).toString('hex')}` as `0x${string}`;
 
   const domain = {
     name: config.X402_EIP712_NAME,
     version: config.X402_EIP712_VERSION,
     chainId,
+    verifyingContract: params.asset as `0x${string}`,
   };
 
   const types = {
-    PaymentAuthorization: [
+    TransferWithAuthorization: [
       { name: 'from', type: 'address' },
       { name: 'to', type: 'address' },
       { name: 'value', type: 'uint256' },
       { name: 'validAfter', type: 'uint256' },
       { name: 'validBefore', type: 'uint256' },
-      { name: 'nonce', type: 'uint256' },
+      { name: 'nonce', type: 'bytes32' },
     ],
   };
 
@@ -245,18 +246,20 @@ export async function buildAgentPaymentHeader(params: {
     value: BigInt(value),
     validAfter: BigInt(validAfter),
     validBefore: BigInt(validBefore),
-    nonce: BigInt(nonce),
+    nonce,
   };
 
   const { signature } = await signWithAgentWallet(moduleId, {
     domain,
     types,
-    primaryType: 'PaymentAuthorization',
+    primaryType: 'TransferWithAuthorization',
     message,
   });
 
   const paymentPayload = {
-    signature,
+    x402Version: 1,
+    scheme: 'exact',
+    network: params.network,
     payload: {
       from: wallet.walletAddress,
       to: payTo,
@@ -264,7 +267,7 @@ export async function buildAgentPaymentHeader(params: {
       validAfter,
       validBefore,
       nonce,
-      network: params.network,
+      signature,
       asset: params.asset,
     },
   };

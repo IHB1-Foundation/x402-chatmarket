@@ -119,6 +119,9 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
       // Get client identifiers for try-once check
       const clientIp = request.ip;
       const walletAddress = request.headers['x-wallet-address'] as string | undefined;
+      const paymentDescription = `module:${module.id} / 1 ${
+        module.pricingMode === 'per_message' ? 'message' : 'session'
+      }`;
 
       // Check for session pass (skip payment if valid)
       const sessionPassHeader = request.headers['x-session-pass'] as string | undefined;
@@ -237,11 +240,7 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
 
         // Not eligible for free try and no payment - return 402
         if (!request.headers['x-payment']) {
-          const paymentRequirements = buildPaymentRequirements(
-            module.payTo,
-            module.priceAmount,
-            `module:${module.id} / 1 ${module.pricingMode === 'per_message' ? 'message' : 'session'}`
-          );
+          const paymentRequirements = buildPaymentRequirements(module.payTo, module.priceAmount, paymentDescription);
 
           const response402: {
             error: string;
@@ -269,6 +268,7 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Process payment
       const paymentHeader = request.headers['x-payment'] as string;
+      const paymentRequirements = buildPaymentRequirements(module.payTo, module.priceAmount, paymentDescription);
 
       // Log payment attempt
       logPaymentAttempt(request, {
@@ -279,7 +279,7 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Verify payment
       const verifyStartTime = Date.now();
-      const verifyResult = await verifyPayment(paymentHeader);
+      const verifyResult = await verifyPayment(paymentHeader, paymentRequirements);
       const verifyLatency = Date.now() - verifyStartTime;
 
       // Log verification result
@@ -311,7 +311,7 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Settle payment
       const settleStartTime = Date.now();
-      const settleResult = await settlePayment(paymentHeader);
+      const settleResult = await settlePayment(paymentHeader, paymentRequirements);
       const settleLatency = Date.now() - settleStartTime;
 
       if (!settleResult.success) {

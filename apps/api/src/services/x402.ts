@@ -40,24 +40,35 @@ export function buildPaymentRequirements(
   };
 }
 
-export async function verifyPayment(paymentHeader: string): Promise<VerifyResult> {
+function decodePaymentHeader(paymentHeader: string): {
+  payer?: string;
+  value?: string;
+  error?: string;
+} {
+  try {
+    const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString()) as {
+      payload?: { from?: string; value?: string };
+    };
+    return {
+      payer: decoded?.payload?.from,
+      value: decoded?.payload?.value,
+    };
+  } catch {
+    return { error: 'Failed to decode payment header' };
+  }
+}
+
+export async function verifyPayment(
+  paymentHeader: string,
+  paymentRequirements: PaymentRequirements
+): Promise<VerifyResult> {
   const config = getConfig();
 
   if (config.X402_MOCK_MODE) {
-    // Mock mode: decode base64 header and validate structure
-    try {
-      const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
-      if (!decoded.signature || !decoded.payload) {
-        return { valid: false, error: 'Invalid payment structure' };
-      }
-      return {
-        valid: true,
-        payer: decoded.payload.from || '0xMockPayer',
-        value: decoded.payload.value || '10000',
-      };
-    } catch {
-      return { valid: false, error: 'Failed to decode payment header' };
-    }
+    const decoded = decodePaymentHeader(paymentHeader);
+    if (decoded.error) return { valid: false, error: decoded.error };
+    if (!decoded.payer || !decoded.value) return { valid: false, error: 'Invalid payment structure' };
+    return { valid: true, payer: decoded.payer, value: decoded.value };
   }
 
   // Real mode: call facilitator
@@ -67,22 +78,60 @@ export async function verifyPayment(paymentHeader: string): Promise<VerifyResult
   }
 
   try {
+    const decoded = decodePaymentHeader(paymentHeader);
     const response = await fetch(`${facilitatorUrl}/verify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payment: paymentHeader }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X402-Version': '1',
+      },
+      body: JSON.stringify({
+        x402Version: 1,
+        paymentHeader,
+        paymentRequirements,
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      return { valid: false, error: `Verify failed: ${response.status} ${errorText}` };
+      return {
+        valid: false,
+        payer: decoded.payer,
+        value: decoded.value,
+        error: `Verify failed: ${response.status} ${errorText}`,
+      };
     }
 
-    const result = await response.json() as { valid: boolean; payer?: string; value?: string };
+    const result = (await response.json()) as
+      | { isValid: boolean; invalidReason: string | null }
+      | { valid: boolean; payer?: string; value?: string }
+      | { status: string; error?: string };
+
+    if ('isValid' in result && typeof result.isValid === 'boolean') {
+      return {
+        valid: result.isValid,
+        payer: decoded.payer,
+        value: decoded.value,
+        error: result.isValid ? undefined : result.invalidReason || 'Payment verification failed',
+      };
+    }
+
+    if ('valid' in result && typeof result.valid === 'boolean') {
+      return {
+        valid: result.valid,
+        payer: result.payer ?? decoded.payer,
+        value: result.value ?? decoded.value,
+      };
+    }
+
     return {
-      valid: result.valid,
-      payer: result.payer,
-      value: result.value,
+      valid: false,
+      payer: decoded.payer,
+      value: decoded.value,
+      error:
+        'error' in result && typeof result.error === 'string'
+          ? result.error
+          : 'Unexpected verify response',
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -90,7 +139,10 @@ export async function verifyPayment(paymentHeader: string): Promise<VerifyResult
   }
 }
 
-export async function settlePayment(paymentHeader: string): Promise<SettleResult> {
+export async function settlePayment(
+  paymentHeader: string,
+  paymentRequirements: PaymentRequirements
+): Promise<SettleResult> {
   const config = getConfig();
 
   if (config.X402_MOCK_MODE) {
@@ -110,8 +162,15 @@ export async function settlePayment(paymentHeader: string): Promise<SettleResult
   try {
     const response = await fetch(`${facilitatorUrl}/settle`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payment: paymentHeader }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X402-Version': '1',
+      },
+      body: JSON.stringify({
+        x402Version: 1,
+        paymentHeader,
+        paymentRequirements,
+      }),
     });
 
     if (!response.ok) {
@@ -119,11 +178,23 @@ export async function settlePayment(paymentHeader: string): Promise<SettleResult
       return { success: false, error: `Settle failed: ${response.status} ${errorText}` };
     }
 
-    const result = await response.json() as { success: boolean; txHash?: string };
-    return {
-      success: result.success,
-      txHash: result.txHash,
-    };
+    const result = (await response.json()) as
+      | { event: 'payment.settled'; txHash: string }
+      | { event: 'payment.failed'; error: string }
+      | { success: boolean; txHash?: string };
+
+    if ('event' in result) {
+      if (result.event === 'payment.settled') {
+        return { success: true, txHash: result.txHash };
+      }
+      return { success: false, error: result.error || 'Payment settlement failed' };
+    }
+
+    if ('success' in result && typeof result.success === 'boolean') {
+      return { success: result.success, txHash: result.txHash };
+    }
+
+    return { success: false, error: 'Unexpected settle response' };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     return { success: false, error: `Settle request failed: ${msg}` };

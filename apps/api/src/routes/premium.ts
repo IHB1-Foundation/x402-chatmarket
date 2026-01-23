@@ -30,8 +30,10 @@ export async function premiumRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
+      const requirements = buildPaymentRequirements(DEMO_PAY_TO, DEMO_PRICE, 'premium/echo: 1 message');
+
       // Verify payment
-      const verifyResult = await verifyPayment(paymentHeader);
+      const verifyResult = await verifyPayment(paymentHeader, requirements);
       if (!verifyResult.valid) {
         // Record failed verification
         await createPayment({
@@ -47,16 +49,12 @@ export async function premiumRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(402).send({
           error: 'Payment verification failed',
           details: verifyResult.error,
-          paymentRequirements: buildPaymentRequirements(
-            DEMO_PAY_TO,
-            DEMO_PRICE,
-            'premium/echo: 1 message'
-          ),
+          paymentRequirements: requirements,
         });
       }
 
       // Settle payment
-      const settleResult = await settlePayment(paymentHeader);
+      const settleResult = await settlePayment(paymentHeader, requirements);
       if (!settleResult.success) {
         // Record failed settlement
         await createPayment({
@@ -72,11 +70,7 @@ export async function premiumRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(402).send({
           error: 'Payment settlement failed',
           details: settleResult.error,
-          paymentRequirements: buildPaymentRequirements(
-            DEMO_PAY_TO,
-            DEMO_PRICE,
-            'premium/echo: 1 message'
-          ),
+          paymentRequirements: requirements,
         });
       }
 

@@ -123,11 +123,21 @@ export default function ChatPage() {
   const buildPaymentHeader = async (requirements: any): Promise<string> => {
     if (!address) throw new Error('Wallet not connected');
 
-    const { domain, types } = x402Config;
+    const { domainBase, types } = x402Config;
 
-    const validAfter = Math.floor(Date.now() / 1000);
-    const validBefore = validAfter + (requirements.maxTimeoutSeconds || 300);
-    const nonce = Date.now();
+    const validAfter = 0;
+    const validBefore = Math.floor(Date.now() / 1000) + (requirements.maxTimeoutSeconds || 300);
+
+    const nonceBytes = new Uint8Array(32);
+    crypto.getRandomValues(nonceBytes);
+    const nonce = `0x${Array.from(nonceBytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')}` as `0x${string}`;
+
+    const domain = {
+      ...domainBase,
+      verifyingContract: requirements.asset as `0x${string}`,
+    } as const;
 
     const messageToSign = {
       from: address,
@@ -135,18 +145,20 @@ export default function ChatPage() {
       value: BigInt(requirements.maxAmountRequired),
       validAfter: BigInt(validAfter),
       validBefore: BigInt(validBefore),
-      nonce: BigInt(nonce),
-    };
+      nonce,
+    } as const;
 
     const signature = await signTypedDataAsync({
       domain,
       types,
-      primaryType: 'PaymentAuthorization',
+      primaryType: 'TransferWithAuthorization',
       message: messageToSign,
     });
 
-    const payload = {
-      signature,
+    const paymentHeader = {
+      x402Version: 1,
+      scheme: requirements.scheme || 'exact',
+      network: requirements.network,
       payload: {
         from: address,
         to: requirements.payTo,
@@ -154,12 +166,12 @@ export default function ChatPage() {
         validAfter,
         validBefore,
         nonce,
-        network: requirements.network,
+        signature,
         asset: requirements.asset,
       },
     };
 
-    return Buffer.from(JSON.stringify(payload)).toString('base64');
+    return Buffer.from(JSON.stringify(paymentHeader)).toString('base64');
   };
 
   const isSessionPassValid = () => {
