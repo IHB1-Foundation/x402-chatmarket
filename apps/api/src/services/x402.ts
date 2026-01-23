@@ -1,5 +1,6 @@
 import { getConfig } from '../config.js';
 import type { PaymentRequirements } from '@soulforge/shared';
+import { randomBytes } from 'crypto';
 
 interface VerifyResult {
   valid: boolean;
@@ -8,11 +9,9 @@ interface VerifyResult {
   value?: string;
 }
 
-interface SettleResult {
-  success: boolean;
-  txHash?: string;
-  error?: string;
-}
+type SettleResult =
+  | { success: true; txHash: string; isMock?: boolean }
+  | { success: false; error: string };
 
 export function buildPaymentRequirements(
   payTo: string,
@@ -149,7 +148,8 @@ export async function settlePayment(
     // Mock mode: simulate successful settlement
     return {
       success: true,
-      txHash: `0xmock${Date.now().toString(16)}`,
+      isMock: true,
+      txHash: `0x${randomBytes(32).toString('hex')}`,
     };
   }
 
@@ -181,17 +181,29 @@ export async function settlePayment(
     const result = (await response.json()) as
       | { event: 'payment.settled'; txHash: string }
       | { event: 'payment.failed'; error: string }
-      | { success: boolean; txHash?: string };
+      | { success: boolean; txHash?: string; error?: string };
+
+    const isTxHash = (value: unknown): value is string =>
+      typeof value === 'string' && /^0x[a-fA-F0-9]{64}$/.test(value);
 
     if ('event' in result) {
       if (result.event === 'payment.settled') {
+        if (!isTxHash(result.txHash)) {
+          return { success: false, error: 'Settlement returned invalid txHash' };
+        }
         return { success: true, txHash: result.txHash };
       }
       return { success: false, error: result.error || 'Payment settlement failed' };
     }
 
     if ('success' in result && typeof result.success === 'boolean') {
-      return { success: result.success, txHash: result.txHash };
+      if (result.success) {
+        if (!isTxHash(result.txHash)) {
+          return { success: false, error: 'Settlement returned success without a valid txHash' };
+        }
+        return { success: true, txHash: result.txHash };
+      }
+      return { success: false, error: result.error || 'Payment settlement failed' };
     }
 
     return { success: false, error: 'Unexpected settle response' };

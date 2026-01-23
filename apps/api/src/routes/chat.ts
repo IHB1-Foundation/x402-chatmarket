@@ -501,6 +501,7 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
           reply: string;
           payment: {
             txHash: string | undefined;
+            isMock?: boolean;
             from: string | undefined;
             to: string;
             value: string;
@@ -513,6 +514,7 @@ export async function chatRoutes(fastify: FastifyInstance): Promise<void> {
           reply: ragResult.reply,
           payment: {
             txHash: settleResult.txHash,
+            isMock: settleResult.isMock,
             from: verifyResult.payer,
             to: module.payTo,
             value: verifyResult.value || module.priceAmount,

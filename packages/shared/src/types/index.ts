@@ -115,6 +115,7 @@ export interface ChatResponse {
   reply: string;
   payment?: {
     txHash: string;
+    isMock?: boolean;
     from: string;
     to: string;
     value: string;

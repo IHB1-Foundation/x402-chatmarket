@@ -23,6 +23,7 @@ interface Message {
 
 interface PaymentInfo {
   txHash?: string;
+  isMock?: boolean;
   from?: string;
   to?: string;
   value?: string;
@@ -38,6 +39,7 @@ interface SessionPassInfo {
 
 interface UpstreamPaymentInfo {
   txHash?: string;
+  isMock?: boolean;
   from?: string;
   to?: string;
   value?: string;
@@ -81,11 +83,11 @@ export default function ChatPage() {
   const [sessionPass, setSessionPass] = useState<SessionPassInfo | null>(null);
   const [upstreamPayment, setUpstreamPayment] = useState<UpstreamPaymentInfo | null>(null);
 
-  const paymentTxUrl = paymentInfo?.txHash
+  const paymentTxUrl = paymentInfo?.txHash && !paymentInfo.isMock
     ? getTxExplorerUrl({ chainId: x402Config.chainId, network: x402Config.network, txHash: paymentInfo.txHash })
     : null;
 
-  const upstreamTxUrl = upstreamPayment?.txHash
+  const upstreamTxUrl = upstreamPayment?.txHash && !upstreamPayment.isMock
     ? getTxExplorerUrl({ chainId: x402Config.chainId, network: x402Config.network, txHash: upstreamPayment.txHash })
     : null;
 
@@ -180,8 +182,11 @@ export default function ChatPage() {
     return sessionPass.expiresAt > now && sessionPass.creditsRemaining > 0;
   };
 
-  const sendMessage = async (messageText: string, paymentHeader?: string): Promise<boolean> => {
-    if (!messageText.trim()) return false;
+  const sendMessage = async (
+    messageText: string,
+    paymentHeader?: string
+  ): Promise<{ sent: boolean; payment?: PaymentInfo; upstreamPayment?: UpstreamPaymentInfo }> => {
+    if (!messageText.trim()) return { sent: false };
 
     setLoading(true);
     setError(null);
@@ -222,7 +227,7 @@ export default function ChatPage() {
           setPendingMessage(messageText);
           setShowPaymentModal(true);
           setMessages((prev) => prev.slice(0, -1));
-          return false;
+          return { sent: false };
         }
 
         const details =
@@ -263,13 +268,13 @@ export default function ChatPage() {
         setError('Free preview complete. Pay to continue chatting.');
       }
 
-      return true;
+      return { sent: true, payment: data.payment, upstreamPayment: data.upstreamPayment };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMsg);
       showToast(errorMsg, 'error');
       setMessages((prev) => prev.slice(0, -1));
-      return false;
+      return { sent: false };
     } finally {
       setLoading(false);
     }
@@ -282,12 +287,18 @@ export default function ChatPage() {
 
     try {
       const paymentHeader = await buildPaymentHeader(paymentRequirements);
-      const sent = await sendMessage(pendingMessage, paymentHeader);
-      if (!sent) return;
+      const result = await sendMessage(pendingMessage, paymentHeader);
+      if (!result.sent) return;
       setPendingMessage(null);
       setPaymentRequirements(null);
       setShowPaymentModal(false);
-      showToast('Payment successful!', 'success');
+      const isMock = result.payment?.isMock;
+      showToast(
+        isMock
+          ? 'Mock payment simulated (no on-chain transaction).'
+          : 'Payment successful!',
+        isMock ? 'warning' : 'success'
+      );
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Payment failed';
       setError(errorMsg);
@@ -409,11 +420,22 @@ export default function ChatPage() {
         {/* Info Banners */}
         <div className="border-t border-[var(--color-border)]">
           {paymentInfo && (
-            <div className="px-4 py-2 bg-[var(--color-success-light)] text-sm flex items-center gap-2 flex-wrap">
-              <svg className="w-4 h-4 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div
+              className={`px-4 py-2 text-sm flex items-center gap-2 flex-wrap ${
+                paymentInfo.isMock ? 'bg-[var(--color-warning-light)]' : 'bg-[var(--color-success-light)]'
+              }`}
+            >
+              <svg
+                className={`w-4 h-4 ${paymentInfo.isMock ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-[var(--color-success)] font-medium">Payment Confirmed</span>
+              <span className={`${paymentInfo.isMock ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'} font-medium`}>
+                {paymentInfo.isMock ? 'Mock Payment (Simulated)' : 'Payment Confirmed'}
+              </span>
               <span className="text-[var(--color-text-secondary)] font-mono text-xs flex items-center gap-1">
                 TX: {paymentInfo.txHash?.slice(0, 10)}...{paymentInfo.txHash?.slice(-6)}
                 {paymentInfo.txHash && <CopyButton text={paymentInfo.txHash} label="tx hash" />}
@@ -422,7 +444,7 @@ export default function ChatPage() {
                     href={paymentTxUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-sans text-[var(--color-success)] hover:underline"
+                    className={`font-sans ${paymentInfo.isMock ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'} hover:underline`}
                   >
                     View
                   </a>
@@ -439,7 +461,9 @@ export default function ChatPage() {
               <svg className="w-4 h-4 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              <span className="text-[var(--color-warning)] font-medium">Upstream Payment (Remix)</span>
+              <span className="text-[var(--color-warning)] font-medium">
+                {upstreamPayment.isMock ? 'Mock Upstream Payment (Simulated)' : 'Upstream Payment (Remix)'}
+              </span>
               <span className="text-[var(--color-text-secondary)] font-mono text-xs flex items-center gap-1">
                 TX: {upstreamPayment.txHash?.slice(0, 10)}...
                 {upstreamPayment.txHash && <CopyButton text={upstreamPayment.txHash} label="tx hash" />}
