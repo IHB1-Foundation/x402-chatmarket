@@ -39,6 +39,8 @@ const ApiConfigSchema = z.object({
   X402_ASSET_CONTRACT: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
   X402_ASSET_DECIMALS: z.coerce.number().int().default(6),
   X402_CHAIN_ID: z.coerce.number().int().default(338),
+  // Optional: override RPC URL used for on-chain verification/indexing.
+  X402_RPC_URL: z.string().url().optional(),
   X402_EIP712_NAME: z.string().default('x402'),
   X402_EIP712_VERSION: z.string().default('1'),
   X402_MOCK_MODE: EnvBooleanSchema.default(false),

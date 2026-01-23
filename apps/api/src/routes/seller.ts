@@ -19,6 +19,7 @@ import {
   getLatestEvalRun,
   getEvalRuns,
 } from '../services/eval.js';
+import { listTokenTransfersToAddresses } from '../services/onchain.js';
 
 const CreateModuleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -40,6 +41,15 @@ const CreateModuleSchema = z.object({
 });
 
 type CreateModuleRequest = z.infer<typeof CreateModuleSchema>;
+
+type SellerModuleOnchain = {
+  id: string;
+  name: string;
+  payTo: string;
+  priceAmount: string;
+  network: string;
+  assetContract: string;
+};
 
 export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
   // Create module draft
@@ -1037,6 +1047,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
     page: z.coerce.number().int().positive().default(1),
     size: z.coerce.number().int().positive().max(100).default(20),
     moduleId: z.string().uuid().optional(),
+    days: z.coerce.number().int().positive().max(365).default(90),
   });
 
   // List payments for seller's modules
@@ -1058,75 +1069,190 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
-      const { page, size, moduleId } = parseResult.data;
+      const { page, size, moduleId, days } = parseResult.data;
       const offset = (page - 1) * size;
 
-      // Build the query - only show payments for seller's modules
-      let query = `
-        SELECT p.id, p.module_id, p.payer_wallet, p.pay_to, p.value,
-               p.tx_hash, p.network, p.event, p.error, p.created_at,
-               m.name as module_name
-        FROM payments p
-        JOIN modules m ON p.module_id = m.id
-        WHERE m.owner_user_id = $1
-          AND p.event = 'settled'
-      `;
-      const params: (string | number)[] = [user.sub];
+      const modulesResult = await pool.query(
+        `SELECT id, name, pay_to, price_amount, network, asset_contract
+         FROM modules
+         WHERE owner_user_id = $1`,
+        [user.sub]
+      );
 
-      if (moduleId) {
-        query += ` AND p.module_id = $${params.length + 1}`;
-        params.push(moduleId);
+      const modules: SellerModuleOnchain[] = modulesResult.rows
+        .map((row) => ({
+          id: row.id as string,
+          name: row.name as string,
+          payTo: (row.pay_to as string).toLowerCase(),
+          priceAmount: row.price_amount as string,
+          network: row.network as string,
+          assetContract: (row.asset_contract as string).toLowerCase(),
+        }))
+        .filter((m) => /^0x[a-f0-9]{40}$/.test(m.payTo) && /^0x[a-f0-9]{40}$/.test(m.assetContract));
+
+      if (modules.length === 0) {
+        return reply.send({
+          payments: [],
+          pagination: { page, size, total: 0, totalPages: 0 },
+          meta: { source: 'onchain', days },
+        });
       }
 
-      query += ` ORDER BY p.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-      params.push(size, offset);
+      const modulesByPayTo = new Map<string, SellerModuleOnchain[]>();
+      const groups = new Map<
+        string,
+        { network: string; assetContract: string; toAddresses: Set<string> }
+      >();
 
-      const result = await pool.query(query, params);
+      for (const m of modules) {
+        const existing = modulesByPayTo.get(m.payTo) || [];
+        existing.push(m);
+        modulesByPayTo.set(m.payTo, existing);
 
-      // Get total count
-      let countQuery = `
-        SELECT COUNT(*) as total
-        FROM payments p
-        JOIN modules m ON p.module_id = m.id
-        WHERE m.owner_user_id = $1
-          AND p.event = 'settled'
-      `;
-      const countParams: string[] = [user.sub];
-
-      if (moduleId) {
-        countQuery += ` AND p.module_id = $2`;
-        countParams.push(moduleId);
+        const key = `${m.network}:${m.assetContract}`;
+        const group = groups.get(key) || { network: m.network, assetContract: m.assetContract, toAddresses: new Set<string>() };
+        group.toAddresses.add(m.payTo);
+        groups.set(key, group);
       }
 
-      const countResult = await pool.query(countQuery, countParams);
-      const total = parseInt(countResult.rows[0].total, 10);
+      const msInDay = 24 * 60 * 60 * 1000;
+      const fromTimestampMs = Date.now() - days * msInDay;
+
+      const transfers: Array<{
+        txHash: string;
+        blockNumber: string;
+        blockTimestamp: string;
+        logIndex: number;
+        from: string;
+        to: string;
+        value: string;
+        network: string;
+      }> = [];
+      const scanMeta: Array<{ network: string; assetContract: string; fromBlock: string; toBlock: string }> = [];
+
+      try {
+        for (const group of groups.values()) {
+          const { transfers: found, meta } = await listTokenTransfersToAddresses({
+            network: group.network,
+            assetContract: group.assetContract,
+            toAddresses: Array.from(group.toAddresses),
+            fromTimestampMs,
+          });
+
+          transfers.push(
+            ...found.map((t) => ({
+              txHash: t.txHash,
+              blockNumber: t.blockNumber,
+              blockTimestamp: t.blockTimestamp,
+              logIndex: t.logIndex,
+              from: t.from,
+              to: t.to,
+              value: t.value,
+              network: t.network,
+            }))
+          );
+          scanMeta.push({ network: group.network, assetContract: group.assetContract, ...meta });
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        request.log.error({ err: msg }, 'Failed to scan on-chain payments');
+        return reply.status(503).send({ error: 'Failed to scan on-chain payments', details: msg });
+      }
+
+      const uniqueTxHashes = Array.from(new Set(transfers.map((t) => t.txHash)));
+      const txToModule = new Map<string, { moduleId: string; moduleName: string }>();
+
+      if (uniqueTxHashes.length > 0) {
+        const mapResult = await pool.query(
+          `SELECT p.tx_hash, p.module_id, m.name as module_name
+           FROM payments p
+           JOIN modules m ON p.module_id = m.id
+           WHERE m.owner_user_id = $1
+             AND p.event = 'settled'
+             AND p.tx_hash = ANY($2)`,
+          [user.sub, uniqueTxHashes]
+        );
+        for (const row of mapResult.rows) {
+          if (row.tx_hash) {
+            txToModule.set(row.tx_hash as string, {
+              moduleId: row.module_id as string,
+              moduleName: row.module_name as string,
+            });
+          }
+        }
+      }
+
+      const paymentsAll = transfers.map((t) => {
+        const mapped = txToModule.get(t.txHash);
+        let resolvedModuleId: string | null = mapped?.moduleId || null;
+        let resolvedModuleName = mapped?.moduleName || 'Unattributed';
+
+        if (!mapped) {
+          const candidates = modulesByPayTo.get(t.to) || [];
+          if (candidates.length === 1) {
+            resolvedModuleId = candidates[0].id;
+            resolvedModuleName = candidates[0].name;
+          } else if (candidates.length > 1) {
+            const priceMatches = candidates.filter((m) => m.priceAmount === t.value);
+            if (priceMatches.length === 1) {
+              resolvedModuleId = priceMatches[0].id;
+              resolvedModuleName = priceMatches[0].name;
+            } else {
+              resolvedModuleId = null;
+              resolvedModuleName = 'Multiple modules';
+            }
+          }
+        }
+
+        return {
+          id: `${t.txHash}:${t.logIndex}`,
+          moduleId: resolvedModuleId,
+          moduleName: resolvedModuleName,
+          payerWallet: t.from,
+          payTo: t.to,
+          value: t.value,
+          txHash: t.txHash,
+          network: t.network,
+          event: 'settled',
+          error: null,
+          createdAt: t.blockTimestamp,
+          onchain: {
+            status: 'confirmed',
+            txHash: t.txHash,
+            network: t.network,
+            blockNumber: t.blockNumber,
+            blockTimestamp: t.blockTimestamp,
+            from: t.from,
+            to: t.to,
+            value: t.value,
+          },
+        };
+      });
+
+      const paymentsFiltered = moduleId ? paymentsAll.filter((p) => p.moduleId === moduleId) : paymentsAll;
+      const total = paymentsFiltered.length;
+      const paged = paymentsFiltered.slice(offset, offset + size);
 
       return reply.send({
-        payments: result.rows.map((row) => ({
-          id: row.id,
-          moduleId: row.module_id,
-          moduleName: row.module_name,
-          payerWallet: row.payer_wallet,
-          payTo: row.pay_to,
-          value: row.value,
-          txHash: row.tx_hash,
-          network: row.network,
-          event: row.event,
-          error: row.error,
-          createdAt: row.created_at,
-        })),
+        payments: paged,
         pagination: {
           page,
           size,
           total,
           totalPages: Math.ceil(total / size),
         },
+        meta: {
+          source: 'onchain',
+          days,
+          scannedGroups: scanMeta,
+          matchedFromDb: txToModule.size,
+        },
       });
     }
   );
 
   const AnalyticsQuerySchema = z.object({
-    days: z.coerce.number().int().positive().max(90).default(30),
+    days: z.coerce.number().int().positive().max(365).default(30),
   });
 
   // Get analytics/KPIs for seller
@@ -1150,14 +1276,25 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
 
       const { days } = parseResult.data;
 
-      // Get all seller's module IDs
       const modulesResult = await pool.query(
-        'SELECT id FROM modules WHERE owner_user_id = $1',
+        `SELECT id, name, pay_to, price_amount, network, asset_contract
+         FROM modules
+         WHERE owner_user_id = $1`,
         [user.sub]
       );
-      const moduleIds = modulesResult.rows.map((r) => r.id);
 
-      if (moduleIds.length === 0) {
+      const modules: SellerModuleOnchain[] = modulesResult.rows
+        .map((row) => ({
+          id: row.id as string,
+          name: row.name as string,
+          payTo: (row.pay_to as string).toLowerCase(),
+          priceAmount: row.price_amount as string,
+          network: row.network as string,
+          assetContract: (row.asset_contract as string).toLowerCase(),
+        }))
+        .filter((m) => /^0x[a-f0-9]{40}$/.test(m.payTo) && /^0x[a-f0-9]{40}$/.test(m.assetContract));
+
+      if (modules.length === 0) {
         return reply.send({
           kpis: {
             totalRevenue7d: '0',
@@ -1167,86 +1304,199 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
           },
           revenueTimeseries: [],
           topModules: [],
+          meta: {
+            source: 'onchain',
+            transfersScanned: 0,
+            transfersAttributed: 0,
+            transfersUnattributed: 0,
+          },
         });
       }
 
-      // KPIs: Total revenue for 7d and 30d
-      const revenueQuery = `
-        SELECT
-          COALESCE(SUM(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN value::bigint ELSE 0 END), 0) as revenue_7d,
-          COALESCE(SUM(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN value::bigint ELSE 0 END), 0) as revenue_30d,
-          COUNT(DISTINCT CASE WHEN created_at >= NOW() - INTERVAL '${days} days' THEN id END) as paid_chats,
-          COUNT(DISTINCT CASE WHEN created_at >= NOW() - INTERVAL '${days} days' THEN payer_wallet END) as unique_buyers
-        FROM payments
-        WHERE module_id = ANY($1)
-          AND event = 'settled'
-      `;
-      const revenueResult = await pool.query(revenueQuery, [moduleIds]);
-      const kpiRow = revenueResult.rows[0];
+      const modulesByPayTo = new Map<string, SellerModuleOnchain[]>();
+      const groups = new Map<
+        string,
+        { network: string; assetContract: string; toAddresses: Set<string> }
+      >();
 
-      // Revenue timeseries (daily for the past N days)
-      const timeseriesQuery = `
-        SELECT
-          DATE_TRUNC('day', created_at) as date,
-          SUM(value::bigint) as daily_revenue,
-          COUNT(*) as daily_payments
-        FROM payments
-        WHERE module_id = ANY($1)
-          AND event = 'settled'
-          AND created_at >= NOW() - INTERVAL '${days} days'
-        GROUP BY DATE_TRUNC('day', created_at)
-        ORDER BY date ASC
-      `;
-      const timeseriesResult = await pool.query(timeseriesQuery, [moduleIds]);
+      for (const m of modules) {
+        const existing = modulesByPayTo.get(m.payTo) || [];
+        existing.push(m);
+        modulesByPayTo.set(m.payTo, existing);
 
-      // Fill in missing days with zero revenue
+        const key = `${m.network}:${m.assetContract}`;
+        const group = groups.get(key) || { network: m.network, assetContract: m.assetContract, toAddresses: new Set<string>() };
+        group.toAddresses.add(m.payTo);
+        groups.set(key, group);
+      }
+
+      const windowDays = Math.max(days, 30);
+      const msInDay = 24 * 60 * 60 * 1000;
+      const fromTimestampMs = Date.now() - windowDays * msInDay;
+
+      const transfers: Array<{
+        txHash: string;
+        blockNumber: string;
+        blockTimestamp: string;
+        from: string;
+        to: string;
+        value: string;
+        network: string;
+      }> = [];
+
+      for (const group of groups.values()) {
+        try {
+          const { transfers: found } = await listTokenTransfersToAddresses({
+            network: group.network,
+            assetContract: group.assetContract,
+            toAddresses: Array.from(group.toAddresses),
+            fromTimestampMs,
+          });
+          transfers.push(
+            ...found.map((t) => ({
+              txHash: t.txHash,
+              blockNumber: t.blockNumber,
+              blockTimestamp: t.blockTimestamp,
+              from: t.from,
+              to: t.to,
+              value: t.value,
+              network: t.network,
+            }))
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          request.log.error({ err: msg }, 'Failed to scan on-chain transfers for analytics');
+        }
+      }
+
+      const uniqueTxHashes = Array.from(new Set(transfers.map((t) => t.txHash)));
+      const txToModule = new Map<string, { moduleId: string; moduleName: string }>();
+      if (uniqueTxHashes.length > 0) {
+        const mapResult = await pool.query(
+          `SELECT p.tx_hash, p.module_id, m.name as module_name
+           FROM payments p
+           JOIN modules m ON p.module_id = m.id
+           WHERE m.owner_user_id = $1
+             AND p.event = 'settled'
+             AND p.tx_hash = ANY($2)`,
+          [user.sub, uniqueTxHashes]
+        );
+        for (const row of mapResult.rows) {
+          if (row.tx_hash) {
+            txToModule.set(row.tx_hash as string, {
+              moduleId: row.module_id as string,
+              moduleName: row.module_name as string,
+            });
+          }
+        }
+      }
+
+      const nowMs = Date.now();
+
+      const sevenDaysAgo = nowMs - 7 * msInDay;
+      const thirtyDaysAgo = nowMs - 30 * msInDay;
+      const nDaysAgo = nowMs - days * msInDay;
+
+      let revenue7d = 0n;
+      let revenue30d = 0n;
+
+      let paidChatsCount = 0;
+      const uniqueBuyers = new Set<string>();
+
+      const dayBuckets = new Map<string, { revenue: bigint; payments: number }>();
+      const perModule = new Map<string, { revenue: bigint; payments: number }>();
+
+      let transfersAttributed = 0;
+      let transfersUnattributed = 0;
+
+      for (const t of transfers) {
+        const ts = Date.parse(t.blockTimestamp);
+        if (Number.isNaN(ts)) continue;
+
+        const value = BigInt(t.value);
+
+        if (ts >= sevenDaysAgo) revenue7d += value;
+        if (ts >= thirtyDaysAgo) revenue30d += value;
+
+        if (ts >= nDaysAgo) {
+          paidChatsCount += 1;
+          uniqueBuyers.add(t.from);
+
+          const dateStr = new Date(ts).toISOString().split('T')[0];
+          const bucket = dayBuckets.get(dateStr) || { revenue: 0n, payments: 0 };
+          bucket.revenue += value;
+          bucket.payments += 1;
+          dayBuckets.set(dateStr, bucket);
+
+          const mapped = txToModule.get(t.txHash);
+          let moduleId: string | null = mapped?.moduleId || null;
+          let moduleName: string | null = mapped?.moduleName || null;
+
+          if (!mapped) {
+            const candidates = modulesByPayTo.get(t.to) || [];
+            if (candidates.length === 1) {
+              moduleId = candidates[0].id;
+              moduleName = candidates[0].name;
+            } else if (candidates.length > 1) {
+              const priceMatches = candidates.filter((m) => m.priceAmount === t.value);
+              if (priceMatches.length === 1) {
+                moduleId = priceMatches[0].id;
+                moduleName = priceMatches[0].name;
+              } else {
+                moduleId = null;
+                moduleName = null;
+              }
+            }
+          }
+
+          if (moduleId && moduleName) {
+            transfersAttributed += 1;
+            const mod = perModule.get(moduleId) || { revenue: 0n, payments: 0 };
+            mod.revenue += value;
+            mod.payments += 1;
+            perModule.set(moduleId, mod);
+          } else {
+            transfersUnattributed += 1;
+          }
+        }
+      }
+
       const timeseries: { date: string; revenue: string; payments: number }[] = [];
       const now = new Date();
-      const dateMap = new Map(
-        timeseriesResult.rows.map((r) => [
-          new Date(r.date).toISOString().split('T')[0],
-          { revenue: r.daily_revenue.toString(), payments: parseInt(r.daily_payments, 10) },
-        ])
-      );
-
       for (let i = days - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        const data = dateMap.get(dateStr) || { revenue: '0', payments: 0 };
-        timeseries.push({ date: dateStr, ...data });
+        const data = dayBuckets.get(dateStr) || { revenue: 0n, payments: 0 };
+        timeseries.push({ date: dateStr, revenue: data.revenue.toString(), payments: data.payments });
       }
 
-      // Top modules by revenue
-      const topModulesQuery = `
-        SELECT
-          m.id,
-          m.name,
-          COALESCE(SUM(p.value::bigint), 0) as total_revenue,
-          COUNT(p.id) as total_payments
-        FROM modules m
-        LEFT JOIN payments p ON p.module_id = m.id AND p.event = 'settled' AND p.created_at >= NOW() - INTERVAL '${days} days'
-        WHERE m.owner_user_id = $1
-        GROUP BY m.id, m.name
-        ORDER BY total_revenue DESC
-        LIMIT 5
-      `;
-      const topModulesResult = await pool.query(topModulesQuery, [user.sub]);
+      const topModules = Array.from(perModule.entries())
+        .map(([id, stats]) => ({
+          id,
+          name: modules.find((m) => m.id === id)?.name || 'Unknown',
+          totalRevenue: stats.revenue.toString(),
+          totalPayments: stats.payments,
+        }))
+        .sort((a, b) => BigInt(b.totalRevenue) > BigInt(a.totalRevenue) ? 1 : BigInt(b.totalRevenue) < BigInt(a.totalRevenue) ? -1 : 0)
+        .slice(0, 5);
 
       return reply.send({
         kpis: {
-          totalRevenue7d: kpiRow.revenue_7d.toString(),
-          totalRevenue30d: kpiRow.revenue_30d.toString(),
-          paidChatsCount: parseInt(kpiRow.paid_chats, 10),
-          uniqueBuyers: parseInt(kpiRow.unique_buyers, 10),
+          totalRevenue7d: revenue7d.toString(),
+          totalRevenue30d: revenue30d.toString(),
+          paidChatsCount,
+          uniqueBuyers: uniqueBuyers.size,
         },
         revenueTimeseries: timeseries,
-        topModules: topModulesResult.rows.map((r) => ({
-          id: r.id,
-          name: r.name,
-          totalRevenue: r.total_revenue.toString(),
-          totalPayments: parseInt(r.total_payments, 10),
-        })),
+        topModules,
+        meta: {
+          source: 'onchain',
+          transfersScanned: transfers.length,
+          transfersAttributed,
+          transfersUnattributed,
+          matchedFromDb: txToModule.size,
+        },
       });
     }
   );

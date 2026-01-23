@@ -29,7 +29,7 @@ interface Module {
 
 interface Payment {
   id: string;
-  moduleId: string;
+  moduleId: string | null;
   moduleName: string;
   payerWallet: string;
   payTo: string;
@@ -38,6 +38,11 @@ interface Payment {
   network: string;
   event: string;
   createdAt: string;
+  onchain?: {
+    status: string;
+    blockNumber?: string;
+    blockTimestamp?: string;
+  };
 }
 
 interface Pagination {
@@ -129,6 +134,7 @@ export default function SellerDashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [paymentsPagination, setPaymentsPagination] = useState<Pagination | null>(null);
+  const [paymentsDays, setPaymentsDays] = useState(365);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loadingModules, setLoadingModules] = useState(false);
   const [loadingPayments, setLoadingPayments] = useState(false);
@@ -150,6 +156,14 @@ export default function SellerDashboard() {
     setPaymentsPagination(null);
     setPaymentsPage(1);
   }, [isAuthenticated]);
+
+  // Reset payments pagination when range changes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setPayments([]);
+    setPaymentsPagination(null);
+    setPaymentsPage(1);
+  }, [isAuthenticated, paymentsDays]);
 
   // Fetch seller's modules
   useEffect(() => {
@@ -188,9 +202,12 @@ export default function SellerDashboard() {
     const fetchPayments = async () => {
       setLoadingPayments(true);
       try {
-        const res = await fetch(`${API_URL}/api/seller/payments?page=${paymentsPage}&size=${PAYMENTS_PAGE_SIZE}`, {
+        const res = await fetch(
+          `${API_URL}/api/seller/payments?page=${paymentsPage}&size=${PAYMENTS_PAGE_SIZE}&days=${paymentsDays}`,
+          {
           headers: authHeaders(),
-        });
+          }
+        );
         if (res.ok) {
           const data = await res.json();
           setPayments((prev) =>
@@ -209,7 +226,7 @@ export default function SellerDashboard() {
     };
 
     fetchPayments();
-  }, [isAuthenticated, authHeaders, showToast, paymentsPage]);
+  }, [isAuthenticated, authHeaders, showToast, paymentsPage, paymentsDays]);
 
   // Fetch analytics
   useEffect(() => {
@@ -477,7 +494,21 @@ export default function SellerDashboard() {
 
       {/* Recent Payments */}
       <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Recent Payments</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h2 className="text-xl font-semibold">Recent Payments</h2>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-[var(--color-text-tertiary)]">Range</span>
+            <select
+              value={paymentsDays}
+              onChange={(e) => setPaymentsDays(Number(e.target.value))}
+              className="border border-[var(--color-border)] rounded-[var(--radius-md)] px-2 py-1 bg-[var(--color-surface)] text-[var(--color-text-primary)]"
+            >
+              <option value={30}>Last 30 days</option>
+              <option value={90}>Last 90 days</option>
+              <option value={365}>Last 365 days</option>
+            </select>
+          </div>
+        </div>
         {loadingPaymentsInitial ? (
           <Card padding="md">
             <div className="space-y-3">
@@ -510,15 +541,21 @@ export default function SellerDashboard() {
                 </thead>
                 <tbody>
                   {payments.map((payment) => (
-                    <tr key={payment.id} className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-background-secondary)]">
-                      <td className="p-4">
-                        <Link
-                          href={`/seller/modules/${payment.moduleId}`}
-                          className="text-[var(--color-primary)] hover:underline font-medium"
-                        >
-                          {payment.moduleName}
-                        </Link>
-                      </td>
+	                    <tr key={payment.id} className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-background-secondary)]">
+	                      <td className="p-4">
+	                        {payment.moduleId ? (
+	                          <Link
+	                            href={`/seller/modules/${payment.moduleId}`}
+	                            className="text-[var(--color-primary)] hover:underline font-medium"
+	                          >
+	                            {payment.moduleName}
+	                          </Link>
+	                        ) : (
+	                          <span className="text-[var(--color-text-secondary)] font-medium">
+	                            {payment.moduleName}
+	                          </span>
+	                        )}
+	                      </td>
                       <td className="p-4">
                         <Badge variant="success">{formatPrice(payment.value)}</Badge>
                       </td>
