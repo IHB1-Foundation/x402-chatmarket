@@ -1,6 +1,7 @@
 import { getConfig } from '../config.js';
 import type { PaymentRequirements } from '@soulforge/shared';
 import { randomBytes } from 'crypto';
+import { getAddress, type Address } from 'viem';
 
 interface VerifyResult {
   valid: boolean;
@@ -21,7 +22,7 @@ export function buildPaymentRequirements(
   const config = getConfig();
 
   const normalizeAddress = (value: string): string => {
-    if (/^0x[a-fA-F0-9]{40}$/.test(value)) return value.toLowerCase();
+    if (/^0x[a-fA-F0-9]{40}$/.test(value)) return getAddress(value.toLowerCase() as Address);
     return value;
   };
 
