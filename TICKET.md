@@ -149,17 +149,15 @@ Both flows create a **draft** first; a module only appears in the marketplace af
     - finished_at: 2026-01-14T10:50:00Z
     - Decisions:
       - Used wagmi + viem for wallet connection and EIP-712 signing
-      - Created /x402-poc page with full debug panel showing request/response logs
+      - Created /x402-poc page with full debug panel showing request/response logs (later removed; demo via Marketplace Paid Chat)
       - EIP-712 PaymentAuthorization type with from/to/value/validAfter/validBefore/nonce
       - Supports MetaMask, Coinbase Wallet, and injected providers
     - Verification (requires browser + wallet):
       1. Start API with X402_MOCK_MODE=true
       2. Start web with `pnpm --filter web dev`
-      3. Go to http://localhost:3000/x402-poc
-      4. Connect wallet (MetaMask/etc)
-      5. Click "Call Premium Echo" button
-      6. Debug panel shows: 402 response -> wallet sign prompt -> 200 response
-    - Files: apps/web/src/app/x402-poc/page.tsx, apps/web/src/lib/wagmi.ts, apps/web/src/providers/WagmiProvider.tsx
+      3. Go to http://localhost:3000/marketplace, open a module, and use Paid Chat
+      4. Payment flow should show: 402 response -> wallet sign prompt -> 200 response
+    - Files: apps/web/src/app/x402-poc/page.tsx (removed), apps/web/src/lib/wagmi.ts, apps/web/src/providers/WagmiProvider.tsx
 
 ### T-0103 — Payment Config Abstraction (Network/Token/Domain)
 - Status: DONE
@@ -182,9 +180,9 @@ Both flows create a **draft** first; a module only appears in the marketplace af
       - EIP-712 domain/types centralized in getX402EIP712Domain() and X402_EIP712_TYPES
     - Verification:
       - API x402.ts uses config.X402_NETWORK (line 25), config.X402_ASSET_CONTRACT (line 27)
-      - Web x402-poc/page.tsx uses getClientX402Config() which reads NEXT_PUBLIC_* env vars
+      - Web chat flow uses getClientX402Config() which reads NEXT_PUBLIC_* env vars
       - No hardcoded chainId/asset in payment generation code
-    - Files: packages/shared/src/x402/index.ts, apps/web/src/lib/x402-config.ts, apps/web/.env.example
+    - Files: packages/shared/src/x402/index.ts, apps/web/src/lib/x402-config.ts, apps/web/src/app/chat/[id]/page.tsx, apps/web/.env.example
 
 ---
 
@@ -1031,7 +1029,7 @@ Both flows create a **draft** first; a module only appears in the marketplace af
       - Recommended: TailwindCSS + CSS variables (design tokens) + small UI primitives
       - Alternative (if avoiding Tailwind): CSS Modules + CSS variables + small UI primitives
     - Create global app shell layout:
-      - Top nav (logo, Marketplace/Seller/x402 POC links, theme toggle)
+      - Top nav (logo, Marketplace/Seller links, theme toggle)
       - Content container (max width) and subtle background (gradient/noise)
       - Footer (short tagline + links)
     - Add base typography:
@@ -1041,7 +1039,7 @@ Both flows create a **draft** first; a module only appears in the marketplace af
       - `Button`, `Card`, `Badge`, `Input`, `Textarea`, `Tabs`, `Skeleton`, `Toast`
       - Ensure focus rings, hover states, disabled states, and keyboard navigation
     - Convert the highest-visibility pages off inline styles onto the new primitives:
-      - `/`, `/marketplace`, `/marketplace/:id`, `/chat/:id`, `/seller`, `/x402-poc`
+      - `/`, `/marketplace`, `/marketplace/:id`, `/chat/:id`, `/seller`
     - Files (planned):
       - `apps/web/src/app/layout.tsx` (import globals, wrap providers, add shell)
       - `apps/web/src/app/globals.css` (tokens + base styles)
@@ -1049,7 +1047,7 @@ Both flows create a **draft** first; a module only appears in the marketplace af
       - `apps/web/src/components/*` (new shared UI components)
 - AC:
     - [x] `pnpm --filter web build` succeeds
-    - [x] All key routes render with the new theme: `/`, `/marketplace`, `/marketplace/:id`, `/chat/:id`, `/seller`, `/x402-poc`
+    - [x] All key routes render with the new theme: `/`, `/marketplace`, `/marketplace/:id`, `/chat/:id`, `/seller`
     - [x] Theme toggle works, persists across refresh (localStorage), and respects OS preference on first load
     - [x] UI primitives exist and are used in at least 2 pages each (`Button`, `Card`, `Badge`, `Input`, `Tabs`)
     - [x] Basic accessibility: visible focus ring, sufficient contrast for primary actions, keyboard tab order is sane
@@ -1146,7 +1144,7 @@ Both flows create a **draft** first; a module only appears in the marketplace af
 - Priority: P1
 - Dependencies: T-0901, T-0102
 - Description:
-    - Upgrade `/x402-poc` to be a demo “moment”:
+    - Upgrade `/x402-poc` to be a demo “moment” (later removed; demo via Marketplace Paid Chat):
       - Visual stepper: `Request` → `402 Received` → `Sign` → `Retry` → `200 Success`
       - Status badges (idle/loading/success/error) with clear copy
       - Keep existing raw logs but move into a collapsible “Debug” panel
@@ -1155,7 +1153,7 @@ Both flows create a **draft** first; a module only appears in the marketplace af
       - Optional: confetti or subtle success animation on completion (keep dependency light)
     - Ensure it still works with X402_MOCK_MODE and real facilitator settings.
     - Files (planned):
-      - `apps/web/src/app/x402-poc/page.tsx` (refactor UI)
+      - `apps/web/src/app/x402-poc/page.tsx` (removed)
 - AC:
     - [x] Stepper accurately reflects the 402→sign→retry→200 flow
     - [x] Debug panel can be toggled and still shows full request/response logs
@@ -1331,7 +1329,7 @@ Both flows create a **draft** first; a module only appears in the marketplace af
       - Variety of tags: rpg, fantasy, product, devops, engineering, fitness, health, writing, database
       - Variety of pricing: per_message ($0.01-$0.02) and per_session ($0.03-$0.05)
       - All modules have eval scores (6-9)
-      - Demo banner is purple gradient with quick links to Marketplace/Seller/x402 POC
+      - Demo banner is purple gradient with quick links to Marketplace/Seller
       - `pnpm demo` script chains: demo:infra → demo:wait → demo:seed → demo:dev
       - Upsert logic ensures idempotent seeding (no duplicates on re-run)
     - Verification:

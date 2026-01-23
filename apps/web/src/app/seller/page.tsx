@@ -711,9 +711,6 @@ export default function SellerDashboard() {
           <Link href="/">
             <Button variant="ghost">Home</Button>
           </Link>
-          <Link href="/x402-poc">
-            <Button variant="ghost">x402 POC</Button>
-          </Link>
         </div>
       </section>
     </main>

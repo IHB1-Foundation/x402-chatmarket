@@ -294,17 +294,17 @@ export default function Home() {
             Ready to explore?
           </h2>
           <p className="text-[var(--color-text-secondary)] mb-8 max-w-lg mx-auto">
-            Try the x402 payment flow in our proof-of-concept demo, or browse real AI modules in the marketplace.
+            Browse real AI modules in the marketplace, or connect your wallet to start selling your own.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/x402-poc">
-              <Button variant="secondary">
-                Try x402 Demo
-              </Button>
-            </Link>
             <Link href="/marketplace">
               <Button>
                 View Marketplace
+              </Button>
+            </Link>
+            <Link href="/seller">
+              <Button variant="secondary">
+                Become a Seller
               </Button>
             </Link>
           </div>

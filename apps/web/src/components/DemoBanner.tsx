@@ -35,13 +35,6 @@ export function DemoBanner() {
             >
               Seller
             </Link>
-            <span className="opacity-50">|</span>
-            <Link
-              href="/x402-poc"
-              className="hover:underline opacity-90 hover:opacity-100"
-            >
-              x402 POC
-            </Link>
           </div>
           <button
             onClick={() => setDismissed(true)}

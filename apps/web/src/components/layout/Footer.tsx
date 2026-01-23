@@ -29,12 +29,6 @@ export function Footer() {
             >
               Create Module
             </Link>
-            <Link
-              href="/x402-poc"
-              className="hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              x402 Demo
-            </Link>
           </div>
 
           {/* Tech badges */}

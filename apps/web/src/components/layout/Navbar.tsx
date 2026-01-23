@@ -15,7 +15,6 @@ import { LogoMark } from '../brand/LogoMark';
 const navLinks = [
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/seller', label: 'Seller' },
-  { href: '/x402-poc', label: 'x402 POC' },
 ];
 
 export function Navbar() {
