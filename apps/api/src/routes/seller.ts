@@ -51,6 +51,26 @@ type SellerModuleOnchain = {
   assetContract: string;
 };
 
+const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+
+function normalizeEvmAddressLower(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!EVM_ADDRESS_REGEX.test(trimmed)) return null;
+  return trimmed.toLowerCase();
+}
+
+function normalizeSupportedNetwork(value: unknown, fallback: unknown): string | null {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  const fb = typeof fallback === 'string' ? fallback.trim() : '';
+  const chosen = (raw || fb).toLowerCase();
+
+  if (chosen === 'cronos') return 'cronos-mainnet';
+  if (chosen === 'cronos-mainnet' || chosen === 'cronos-testnet') return chosen;
+
+  return null;
+}
+
 export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
   // Create module draft
   fastify.post<{ Body: CreateModuleRequest }>(
@@ -1059,6 +1079,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       reply: FastifyReply
     ) => {
       const user = request.user as { sub: string; address: string; role: string };
+      const config = getConfig();
       const pool = getPool();
 
       const parseResult = PaymentsQuerySchema.safeParse(request.query);
@@ -1080,15 +1101,24 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       );
 
       const modules: SellerModuleOnchain[] = modulesResult.rows
-        .map((row) => ({
-          id: row.id as string,
-          name: row.name as string,
-          payTo: (row.pay_to as string).toLowerCase(),
-          priceAmount: row.price_amount as string,
-          network: row.network as string,
-          assetContract: (row.asset_contract as string).toLowerCase(),
-        }))
-        .filter((m) => /^0x[a-f0-9]{40}$/.test(m.payTo) && /^0x[a-f0-9]{40}$/.test(m.assetContract));
+        .map((row) => {
+          const payTo = normalizeEvmAddressLower(row.pay_to);
+          const assetContract =
+            normalizeEvmAddressLower(row.asset_contract) ?? normalizeEvmAddressLower(config.X402_ASSET_CONTRACT);
+          const network = normalizeSupportedNetwork(row.network, config.X402_NETWORK);
+
+          if (!payTo || !assetContract || !network) return null;
+
+          return {
+            id: row.id as string,
+            name: row.name as string,
+            payTo,
+            priceAmount: row.price_amount as string,
+            network,
+            assetContract,
+          } satisfies SellerModuleOnchain;
+        })
+        .filter((m): m is SellerModuleOnchain => m !== null);
 
       if (modules.length === 0) {
         return reply.send({
@@ -1141,7 +1171,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
 
           transfers.push(
             ...found.map((t) => ({
-              txHash: t.txHash,
+              txHash: t.txHash.toLowerCase(),
               blockNumber: t.blockNumber,
               blockTimestamp: t.blockTimestamp,
               logIndex: t.logIndex,
@@ -1159,17 +1189,23 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(503).send({ error: 'Failed to scan on-chain payments', details: msg });
       }
 
+      transfers.sort((a, b) => {
+        if (a.blockTimestamp < b.blockTimestamp) return 1;
+        if (a.blockTimestamp > b.blockTimestamp) return -1;
+        return b.logIndex - a.logIndex;
+      });
+
       const uniqueTxHashes = Array.from(new Set(transfers.map((t) => t.txHash)));
       const txToModule = new Map<string, { moduleId: string; moduleName: string }>();
 
       if (uniqueTxHashes.length > 0) {
         const mapResult = await pool.query(
-          `SELECT p.tx_hash, p.module_id, m.name as module_name
+          `SELECT LOWER(p.tx_hash) as tx_hash, p.module_id, m.name as module_name
            FROM payments p
            JOIN modules m ON p.module_id = m.id
            WHERE m.owner_user_id = $1
              AND p.event = 'settled'
-             AND p.tx_hash = ANY($2)`,
+             AND LOWER(p.tx_hash) = ANY($2)`,
           [user.sub, uniqueTxHashes]
         );
         for (const row of mapResult.rows) {
@@ -1264,6 +1300,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       reply: FastifyReply
     ) => {
       const user = request.user as { sub: string; address: string; role: string };
+      const config = getConfig();
       const pool = getPool();
 
       const parseResult = AnalyticsQuerySchema.safeParse(request.query);
@@ -1284,15 +1321,24 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
       );
 
       const modules: SellerModuleOnchain[] = modulesResult.rows
-        .map((row) => ({
-          id: row.id as string,
-          name: row.name as string,
-          payTo: (row.pay_to as string).toLowerCase(),
-          priceAmount: row.price_amount as string,
-          network: row.network as string,
-          assetContract: (row.asset_contract as string).toLowerCase(),
-        }))
-        .filter((m) => /^0x[a-f0-9]{40}$/.test(m.payTo) && /^0x[a-f0-9]{40}$/.test(m.assetContract));
+        .map((row) => {
+          const payTo = normalizeEvmAddressLower(row.pay_to);
+          const assetContract =
+            normalizeEvmAddressLower(row.asset_contract) ?? normalizeEvmAddressLower(config.X402_ASSET_CONTRACT);
+          const network = normalizeSupportedNetwork(row.network, config.X402_NETWORK);
+
+          if (!payTo || !assetContract || !network) return null;
+
+          return {
+            id: row.id as string,
+            name: row.name as string,
+            payTo,
+            priceAmount: row.price_amount as string,
+            network,
+            assetContract,
+          } satisfies SellerModuleOnchain;
+        })
+        .filter((m): m is SellerModuleOnchain => m !== null);
 
       if (modules.length === 0) {
         return reply.send({
@@ -1344,6 +1390,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         network: string;
       }> = [];
 
+      const scanErrors: Array<{ network: string; assetContract: string; error: string }> = [];
       for (const group of groups.values()) {
         try {
           const { transfers: found } = await listTokenTransfersToAddresses({
@@ -1354,7 +1401,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
           });
           transfers.push(
             ...found.map((t) => ({
-              txHash: t.txHash,
+              txHash: t.txHash.toLowerCase(),
               blockNumber: t.blockNumber,
               blockTimestamp: t.blockTimestamp,
               from: t.from,
@@ -1366,19 +1413,27 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           request.log.error({ err: msg }, 'Failed to scan on-chain transfers for analytics');
+          scanErrors.push({ network: group.network, assetContract: group.assetContract, error: msg });
         }
+      }
+
+      if (scanErrors.length > 0 && transfers.length === 0) {
+        return reply.status(503).send({
+          error: 'Failed to scan on-chain transfers for analytics',
+          details: scanErrors,
+        });
       }
 
       const uniqueTxHashes = Array.from(new Set(transfers.map((t) => t.txHash)));
       const txToModule = new Map<string, { moduleId: string; moduleName: string }>();
       if (uniqueTxHashes.length > 0) {
         const mapResult = await pool.query(
-          `SELECT p.tx_hash, p.module_id, m.name as module_name
+          `SELECT LOWER(p.tx_hash) as tx_hash, p.module_id, m.name as module_name
            FROM payments p
            JOIN modules m ON p.module_id = m.id
            WHERE m.owner_user_id = $1
              AND p.event = 'settled'
-             AND p.tx_hash = ANY($2)`,
+             AND LOWER(p.tx_hash) = ANY($2)`,
           [user.sub, uniqueTxHashes]
         );
         for (const row of mapResult.rows) {
@@ -1496,6 +1551,7 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
           transfersAttributed,
           transfersUnattributed,
           matchedFromDb: txToModule.size,
+          scanErrors: scanErrors.length > 0 ? scanErrors : undefined,
         },
       });
     }

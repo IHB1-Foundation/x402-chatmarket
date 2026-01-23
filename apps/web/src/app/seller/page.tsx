@@ -134,7 +134,7 @@ export default function SellerDashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [paymentsPagination, setPaymentsPagination] = useState<Pagination | null>(null);
-  const [paymentsDays, setPaymentsDays] = useState(365);
+  const [paymentsDays, setPaymentsDays] = useState(90);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loadingModules, setLoadingModules] = useState(false);
   const [loadingPayments, setLoadingPayments] = useState(false);
@@ -238,19 +238,29 @@ export default function SellerDashboard() {
         const res = await fetch(`${API_URL}/api/seller/analytics?days=30`, {
           headers: authHeaders(),
         });
-        if (res.ok) {
-          const data = await res.json();
-          setAnalytics(data);
+        if (!res.ok) {
+          let message = 'Failed to load analytics';
+          try {
+            const errBody = await res.json();
+            if (errBody?.error && typeof errBody.error === 'string') message = errBody.error;
+          } catch {
+            // ignore
+          }
+          showToast(message, 'error');
+          return;
         }
+        const data = await res.json();
+        setAnalytics(data);
       } catch (err) {
         console.error('Failed to fetch analytics:', err);
+        showToast('Network error loading analytics', 'error');
       } finally {
         setLoadingAnalytics(false);
       }
     };
 
     fetchAnalytics();
-  }, [isAuthenticated, authHeaders]);
+  }, [isAuthenticated, authHeaders, showToast]);
 
   const formatPrice = (amount: string) => {
     const value = parseInt(amount, 10) / 1e6;
@@ -734,22 +744,9 @@ export default function SellerDashboard() {
                 </Button>
               )}
             </div>
-          </div>
-        )}
-      </section>
-
-      {/* Quick Links */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Quick Links</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/marketplace">
-            <Button variant="outline">Browse Marketplace</Button>
-          </Link>
-          <Link href="/">
-            <Button variant="ghost">Home</Button>
-          </Link>
-        </div>
-      </section>
-    </main>
-  );
-}
+	          </div>
+	        )}
+	      </section>
+	    </main>
+	  );
+	}
